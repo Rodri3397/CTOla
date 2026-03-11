@@ -134,7 +134,7 @@ const MyTeam = () => {
                     </div>
                 </div>
                 <div className="text-right flex flex-col items-end">
-                    <span className="text-[7px] font-black uppercase text-gray-600 tracking-widest mb-1">Esquema 1-1-3</span>
+                    <span className="text-[7px] font-black uppercase text-gray-600 tracking-widest mb-1">Esquema 1-1-4</span>
                     <span className="text-neon font-black text-sm italic">
                         {useStore.getState().myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'CTOlá FC'}
                     </span>
@@ -181,7 +181,7 @@ const MyTeam = () => {
                                 <div className="flex flex-col">
                                     <h2 className="text-sm font-black italic uppercase">{modalData.step === 'teams' ? 'Escolha o Time' : 'Escolha o Craque'}</h2>
                                     <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                                        Vaga: {modalData.slot === 'line3' ? 'Capitão' : modalData.slot === 'line4' ? 'Jogador de Linha' : modalData.pos}
+                                        Vaga: {modalData.slot === 'line3' ? 'Capitão' : modalData.slot === 'line6' ? 'Pivô' : 'Jogador de Linha'}
                                     </span>
                                 </div>
                                 <button onClick={() => setModalData({ isOpen: false })} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">

@@ -81,8 +81,8 @@ export default function Pitch({ squad, onSetCaptain, onSelectSlot, captainId }) 
                     />
                 </div>
 
-                {/* 3. CAPITÃO / JOGADOR DE LINHA / PIVOT */}
-                <div className="flex justify-around gap-2 pb-4">
+                {/* 3. LINHA / CAPITÃO / PIVÔ */}
+                <div className="flex justify-center gap-12 pb-2">
                     <PitchSlot
                         athlete={squad.line3}
                         label="Capitão"
@@ -91,15 +91,24 @@ export default function Pitch({ squad, onSetCaptain, onSelectSlot, captainId }) 
                     />
                     <PitchSlot
                         athlete={squad.line4}
-                        label="Jogador de Linha"
+                        label="Linha"
                         isCaptain={captainId === 'line4'}
                         onSelect={() => onSelectSlot('line4', 'ALA')}
                     />
+                </div>
+
+                <div className="flex justify-around gap-2 pb-4">
                     <PitchSlot
                         athlete={squad.line5}
-                        label="Pivô"
+                        label="Linha"
                         isCaptain={captainId === 'line5'}
-                        onSelect={() => onSelectSlot('line5', 'PIVO')}
+                        onSelect={() => onSelectSlot('line5', 'ALA')}
+                    />
+                    <PitchSlot
+                        athlete={squad.line6}
+                        label="Pivô"
+                        isCaptain={captainId === 'line6'}
+                        onSelect={() => onSelectSlot('line6', 'PIVO')}
                     />
                 </div>
             </div>

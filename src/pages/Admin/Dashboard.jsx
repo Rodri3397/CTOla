@@ -229,19 +229,32 @@ export default function AdminDashboard() {
                         </div>
                         <button
                             onClick={async () => {
-                                const ADMIN_CODE = import.meta.env.VITE_ADMIN_CODE || 'CTOLA';
-                                if (password === ADMIN_CODE || password === currentLeague?.invite_code) {
-                                    // Upgrade role to ADMIN if needed
-                                    try {
-                                        if (user?.id) {
-                                            const { data: member } = await supabase
+                                const enteredCode = password.trim();
+                                if (!enteredCode) return;
+
+                                try {
+                                    // 1. Check if code matches an admin_code in league_members for this league
+                                    const { data: memberWithCode, error: codeError } = await supabase
+                                        .from('league_members')
+                                        .select('id, user_id, role, admin_code')
+                                        .eq('league_id', currentLeagueId)
+                                        .eq('admin_code', enteredCode)
+                                        .maybeSingle();
+
+                                    const ADMIN_CODE = import.meta.env.VITE_ADMIN_CODE || 'CTOLA';
+                                    const isMasterCode = enteredCode === ADMIN_CODE || enteredCode === currentLeague?.invite_code;
+
+                                    if (memberWithCode || isMasterCode) {
+                                        // If using master code, ensure current user is promoted to ADMIN if not already
+                                        if (user?.id && isMasterCode) {
+                                            const { data: currentMember } = await supabase
                                                 .from('league_members')
                                                 .select('role')
                                                 .eq('league_id', currentLeagueId)
                                                 .eq('user_id', user.id)
                                                 .maybeSingle();
 
-                                            if (!member || (member.role !== 'OWNER' && member.role !== 'ADMIN')) {
+                                            if (!currentMember || (currentMember.role !== 'OWNER' && currentMember.role !== 'ADMIN')) {
                                                 await supabase
                                                     .from('league_members')
                                                     .upsert({
@@ -251,13 +264,14 @@ export default function AdminDashboard() {
                                                     });
                                             }
                                         }
-                                    } catch (e) {
-                                        console.error('Erro ao verificar/atualizar cargo:', e);
+                                        setIsAuthorized(true);
+                                    } else {
+                                        setPassError(true);
+                                        setPassword('');
                                     }
-                                    setIsAuthorized(true);
-                                } else {
+                                } catch (e) {
+                                    console.error('Erro na autorização:', e);
                                     setPassError(true);
-                                    setPassword('');
                                 }
                             }}
                             className="bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-neon/10"
@@ -426,37 +440,47 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex items-center justify-between">
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[7px] font-black uppercase text-gray-600 tracking-widest">Código de Convite</span>
-                                    <span className="text-xl font-black text-neon tracking-[0.2em]">{myLeagues.find(l => l.id === currentLeagueId)?.invite_code || '---'}</span>
+                            <div className="flex gap-2 p-1 bg-[#1a1d23] rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
+                                    <div className="flex flex-col flex-1 gap-1 p-3">
+                                        <span className="text-[7px] font-black uppercase text-gray-600 tracking-widest">Meu Código de Acesso</span>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="CRIAR CHAVE"
+                                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-black text-neon outline-none focus:border-neon"
+                                                onKeyDown={async (e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const code = e.target.value.trim().toUpperCase();
+                                                        if (!code) return;
+                                                        const { error } = await supabase
+                                                            .from('league_members')
+                                                            .update({ admin_code: code })
+                                                            .eq('league_id', currentLeagueId)
+                                                            .eq('user_id', user.id);
+                                                        if (!error) alert('Código atualizado!');
+                                                        else alert('Erro: ' + error.message);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col flex-1 gap-1 p-3">
+                                        <span className="text-[7px] font-black uppercase text-gray-600 tracking-widest">Código de Convite</span>
+                                        <span className="text-sm font-black text-neon tracking-[0.1em]">{myLeagues.find(l => l.id === currentLeagueId)?.invite_code || '---'}</span>
+                                    </div>
                                 </div>
-                                <button
-                                    onClick={() => {
-                                        const code = myLeagues.find(l => l.id === currentLeagueId)?.invite_code;
-                                        if (code) {
-                                            navigator.clipboard.writeText(code);
-                                            alert('Código copiado!');
-                                        }
-                                    }}
-                                    className="bg-white/5 p-4 rounded-2xl border border-white/5 text-gray-400 hover:text-white transition-all"
-                                >
-                                    <Plus size={18} className="rotate-45" />
-                                </button>
-                            </div>
 
-                            <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex flex-col gap-6">
-                                <div className="flex items-center gap-2">
-                                    <Trophy size={14} className="text-neon" />
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Histórico de Rodadas</h3>
+                                <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex flex-col gap-6">
+                                    <div className="flex items-center gap-2">
+                                        <Trophy size={14} className="text-neon" />
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Histórico de Rodadas</h3>
+                                    </div>
+                                    <RoundSelector isAdmin />
+                                    <p className="text-[8px] font-bold text-gray-600 uppercase tracking-widest leading-loose">
+                                        A rodada marcada em <span className="text-neon">ciano</span> é a rodada ativa. Novos scouts serão lançados nela.
+                                    </p>
                                 </div>
-                                <RoundSelector isAdmin />
-                                <p className="text-[8px] font-bold text-gray-600 uppercase tracking-widest leading-loose">
-                                    A rodada marcada em <span className="text-neon">ciano</span> é a rodada ativa. Novos scouts serão lançados nela.
-                                </p>
-                            </div>
-                        </motion.div>
+                            </motion.div>
                     ) : activeTab === 'scouts' ? (
                         <motion.div key="scouts" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 flex flex-col gap-6">
                             <div className="glass p-8 rounded-[2.5rem] border border-neon/20 bg-neon/5 flex flex-col gap-6">

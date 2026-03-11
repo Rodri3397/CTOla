@@ -393,10 +393,11 @@ export const useStore = create((set, get) => ({
         if (athlete.pos === 'GOLEIRO') slot = 'goleiro';
         else if (athlete.pos === 'FIXO') slot = 'fixo';
         else {
-            // Fill line3, line4, line5
+            // Fill line3, line4, line5, line6
             if (!draftSquad.line3) slot = 'line3';
             else if (!draftSquad.line4) slot = 'line4';
             else if (!draftSquad.line5) slot = 'line5';
+            else if (!draftSquad.line6) slot = 'line6';
         }
 
         if (slot) {
