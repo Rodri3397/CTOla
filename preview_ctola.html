@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CTOla - App Completo (Admin Control)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#1e40af",
+                        accent: "#3b82f6",
+                        neon: "#00f5ff",
+                        pitch: "#064e3b",
+                        surface: "#1a1d23",
+                        "surface-light": "#252932",
+                    },
+                    fontFamily: {
+                        outfit: ['Outfit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f1115;
+            color: white;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .neo-shadow {
+            box-shadow: 0 0 15px rgba(0, 245, 255, 0.2);
+        }
+
+        .pitch-gradient {
+            background: radial-gradient(circle at center, #065f46 0%, #064e3b 100%);
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        input,
+        select {
+            -webkit-appearance: none;
+            border-radius: 0.75rem;
+        }
+
+        .tab-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const ADMIN_CODE = "CTOLA2026"; // Senha mestra para o preview
+
+        // --- Core Helpers ---
+        const calculateScore = (stats, pos, isCaptain = false) => {
+            if (!stats.participou) return 0;
+            let score = 0;
+            const sg = !stats.equipeSofreuGoal;
+            if (pos === 'GOLEIRO') {
+                score = 3 + (sg ? 5 : 0) + (stats.tlDef || 0) * 3 + (stats.penDef || 0) * 5 - (stats.gs || 0) + (stats.melhorG ? 5 : 0);
+            } else if (pos === 'FIXO') {
+                score = (sg ? 5 : 0) + (stats.gols || 0) * 5 + (stats.assists || 0) * 3 - (stats.penPerd || 0) * 3;
+            } else {
+                score = (sg ? 2 : 0) + (stats.gols || 0) * 5 + (stats.assists || 0) * 3 - (stats.penPerd || 0) * 3;
+            }
+            return isCaptain ? score * 2 : score;
+        };
+
+        const SEED_TEAMS = ["Futsal Colégio A", "Ex-Alunos B", "Veteranos C"];
+        const SEED_ATHLETES = [
+            { id: 1, name: "Rodrigo L.", team: "Futsal Colégio A", pos: "LINE", price: 15, photo: "⚽" },
+            { id: 2, name: "Paredão", team: "Ex-Alunos B", pos: "GOLEIRO", photo: "🧤", price: 12 },
+            { id: 3, name: "Fixo Forte", team: "Veteranos C", pos: "FIXO", photo: "🛡️", price: 14 }
+        ];
+
+        function App() {
+            const [view, setView] = useState('home');
+            const [teams, setTeams] = useState(() => JSON.parse(localStorage.getItem('ctola_t')) || SEED_TEAMS);
+            const [athletes, setAthletes] = useState(() => JSON.parse(localStorage.getItem('ctola_a')) || SEED_ATHLETES);
+            const [mySquad, setMySquad] = useState(() => JSON.parse(localStorage.getItem('ctola_s')) || { gol: null, fix: null, l3: null, l4: null, l5: null, cap: null });
+            const [balance, setBalance] = useState(() => Number(localStorage.getItem('ctola_b')) || 100);
+            const [scoutingId, setScoutingId] = useState(null);
+
+            // Controle Admin
+            const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('ctola_admin') === 'true');
+            const [showLogin, setShowLogin] = useState(false);
+            const [loginPass, setLoginPass] = useState('');
+            const [loginTarget, setLoginTarget] = useState(null);
+
+            useEffect(() => {
+                localStorage.setItem('ctola_t', JSON.stringify(teams));
+                localStorage.setItem('ctola_a', JSON.stringify(athletes));
+                localStorage.setItem('ctola_s', JSON.stringify(mySquad));
+                localStorage.setItem('ctola_b', balance.toString());
+                localStorage.setItem('ctola_admin', isAdmin ? 'true' : 'false');
+                if (window.lucide) window.lucide.createIcons();
+            }, [teams, athletes, mySquad, balance, isAdmin, view, scoutingId, showLogin]);
+
+            const handleViewChange = (newView) => {
+                if ((newView === 'scouter' || newView === 'gestao') && !isAdmin) {
+                    setLoginTarget(newView);
+                    setShowLogin(true);
+                } else {
+                    setView(newView);
+                    setScoutingId(null);
+                }
+            };
+
+            const tryLogin = () => {
+                if (loginPass === ADMIN_CODE) {
+                    setIsAdmin(true);
+                    setShowLogin(false);
+                    setView(loginTarget);
+                    setLoginPass('');
+                } else {
+                    alert("Código incorreto!");
+                }
+            };
+
+            // --- Components ---
+
+            const Navbar = () => (
+                <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md h-18 bg-[#1a1d23]/95 border-t border-white/10 flex items-center justify-around z-50 px-2 pb-safe">
+                    {[
+                        { id: 'home', icon: 'home', l: 'Início' },
+                        { id: 'mercado', icon: 'shopping-cart', l: 'Mercado' },
+                        { id: 'time', icon: 'users', l: 'Meu Time' },
+                        { id: 'scouter', icon: 'clipboard-list', l: 'Scouter', admin: true },
+                        { id: 'gestao', icon: 'settings', l: 'Gestão', admin: true }
+                    ].map(item => (
+                        <button key={item.id} onClick={() => handleViewChange(item.id)} className={`flex flex-col items-center gap-1 tab-btn ${view === item.id ? 'text-neon -translate-y-1' : 'text-gray-500'} ${item.admin && !isAdmin ? 'opacity-40' : ''}`}>
+                            <div className={`p-2 rounded-xl scale-75 ${view === item.id ? 'bg-neon/10 neo-shadow' : ''}`}>
+                                <i data-lucide={item.icon} className="w-6 h-6"></i>
+                            </div>
+                            <span className="text-[8px] font-black uppercase tracking-tighter">{item.l}</span>
+                            {item.admin && !isAdmin && <i data-lucide="lock" className="w-2 h-2 absolute top-1 right-2 opacity-50"></i>}
+                        </button>
+                    ))}
+                </nav>
+            );
+
+            const LoginOverlay = () => (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-6">
+                    <div className="glass w-full max-w-xs p-8 rounded-3xl animate-fade flex flex-col gap-6 text-center shadow-2xl">
+                        <div>
+                            <div className="w-16 h-16 bg-neon/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-neon/20"><i data-lucide="shield-check" className="text-neon w-8 h-8"></i></div>
+                            <h2 className="text-lg font-black uppercase italic">Acesso Restrito</h2>
+                            <p className="text-[10px] text-gray-500 font-bold leading-tight">Insira seu código de administrador para acessar esta função.</p>
+                        </div>
+                        <input autoFocus type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} className="bg-white/5 border border-white/10 px-4 py-4 rounded-xl text-center font-black tracking-[0.5em] text-neon outline-none" placeholder="••••••••" />
+                        <div className="flex flex-col gap-2">
+                            <button onClick={tryLogin} className="bg-neon text-black font-black py-4 rounded-2xl text-xs uppercase shadow-lg">Entrar</button>
+                            <button onClick={() => setShowLogin(false)} className="text-[10px] font-black uppercase text-gray-400 py-2">Voltar</button>
+                        </div>
+                        <div className="text-[8px] text-gray-700 font-bold uppercase mt-2">DICA: O código mestre para o teste é <span className="text-gray-500 italic">CTOLA2026</span></div>
+                    </div>
+                </div>
+            );
+
+            const ProfileSection = () => (
+                <div className="p-5 flex flex-col gap-8 animate-fade pb-24 h-full">
+                    <header><h1 className="text-2xl font-black italic uppercase">Meu Perfil</h1></header>
+                    <div className="flex flex-col items-center gap-4 py-6">
+                        <div className="w-24 h-24 rounded-[2rem] bg-accent border-4 border-white/10 flex items-center justify-center text-3xl font-black relative">
+                            RL
+                            {isAdmin && <div className="absolute -bottom-2 -right-2 bg-neon p-1.5 rounded-xl border-4 border-[#0f1115]"><i data-lucide="shield" className="w-4 h-4 text-black"></i></div>}
+                        </div>
+                        <div className="text-center">
+                            <h2 className="text-xl font-black uppercase">Rodrigo Lucena</h2>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{isAdmin ? 'Administrador da Liga' : 'Dono de Time'}</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                        <button className="glass p-5 rounded-3xl flex justify-between items-center group">
+                            <div className="flex items-center gap-4 font-bold text-xs"><i data-lucide="award" className="w-5 h-5 text-yellow-500"></i> Ligas Privadas</div>
+                            <i data-lucide="chevron-right" className="w-4 h-4 opacity-30 group-hover:translate-x-1 transition-all"></i>
+                        </button>
+                        <button className="glass p-5 rounded-3xl flex justify-between items-center group">
+                            <div className="flex items-center gap-4 font-bold text-xs"><i data-lucide="history" className="w-5 h-5 text-accent"></i> Histórico de Escalações</div>
+                            <i data-lucide="chevron-right" className="w-4 h-4 opacity-30 group-hover:translate-x-1 transition-all"></i>
+                        </button>
+                        {isAdmin && (
+                            <button onClick={() => setIsAdmin(false)} className="mt-8 border border-red-500/20 text-red-400 text-[10px] font-black uppercase py-4 rounded-2xl bg-red-500/5">Revogar Acesso Admin</button>
+                        )}
+                    </div>
+                </div>
+            );
+
+            // --- Home, etc. (Mantendo Lógica Anterior) ---
+
+            const HomeView = () => (
+                <div className="p-5 flex flex-col gap-6 animate-fade pb-24">
+                    <header className="flex justify-between items-center">
+                        <div><h1 className="text-2xl font-black italic text-white flex gap-1">CT<span className="text-neon">ola</span></h1><span className="text-[8px] font-black uppercase text-gray-500 tracking-[0.3em]">Fantasy League</span></div>
+                        <div onClick={() => setView('perfil')} className="w-10 h-10 rounded-2xl bg-accent border border-white/20 flex items-center justify-center font-black cursor-pointer">RL</div>
+                    </header>
+                    <div className="glass p-5 rounded-[2rem] border-l-4 border-neon bg-neon/5 relative overflow-hidden">
+                        <p className="text-xs text-gray-200 font-medium leading-relaxed">Agora protegido! As abas de <strong>Admin</strong> estão bloqueadas para o público. Use o código mestra para configurar a liga.</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="glass p-5 rounded-3xl"><span className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Seu Saldo</span><div className="text-xl font-black text-neon">C$ {balance.toFixed(2)}</div></div>
+                        <div className="glass p-5 rounded-3xl"><span className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Times na Liga</span><div className="text-xl font-black">{teams.length}</div></div>
+                    </div>
+                    <section>
+                        <h2 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">Feed da Liga</h2>
+                        <div className="glass p-4 rounded-3xl border border-white/5 flex gap-4 items-center">
+                            <div className="w-2 h-2 rounded-full bg-neon animate-pulse"></div>
+                            <div className="text-[10px] font-bold"><span className="text-neon uppercase mr-1">AO VIVO:</span> Administrador está atualizando os scouts!</div>
+                        </div>
+                    </section>
+                </div>
+            );
+
+            const MarketView = () => {
+                const [search, setSearch] = useState('');
+                const buy = (ath) => {
+                    if (balance >= ath.price) {
+                        setBalance(prev => prev - ath.price);
+                        alert(`${ath.name} comprado! Vá em "Meu Time" para escalar.`);
+                    } else alert("Saldo insuficiente!");
+                };
+                return (
+                    <div className="p-5 animate-fade pb-24 flex flex-col gap-6">
+                        <header className="flex justify-between items-end"><h1 className="text-2xl font-black italic uppercase">Mercado</h1><span className="text-neon font-black text-sm">C$ {balance.toFixed(2)}</span></header>
+                        <input className="glass w-full px-5 py-4 text-sm rounded-2xl border-none outline-none focus:ring-1 ring-neon" placeholder="Buscar craque..." onChange={e => setSearch(e.target.value)} />
+                        <div className="flex flex-col gap-3">
+                            {athletes.filter(a => a.name.toLowerCase().includes(search.toLowerCase())).map(a => (
+                                <div key={a.id} className="glass p-4 rounded-3xl flex items-center justify-between group hover:bg-white/10 transition-all">
+                                    <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-surface-light flex items-center justify-center text-3xl shadow-inner">{a.photo}</div>
+                                        <div className="flex flex-col"><span className="font-bold text-sm tracking-tight">{a.name}</span><span className="text-[9px] text-gray-500 font-bold uppercase">{a.team} • {a.pos}</span></div></div>
+                                    <div className="flex flex-col items-end gap-1"><span className="text-[11px] font-black text-neon">C$ {a.price}</span><button onClick={() => buy(a)} className="bg-white/5 hover:bg-neon hover:text-black px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all">Comprar</button></div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            const TeamView = () => {
+                const Slot = ({ id, label, ath }) => {
+                    const isCap = mySquad.cap === id;
+                    return (
+                        <div className="flex flex-col items-center gap-2 group">
+                            <div className={`w-16 h-16 rounded-[1.4rem] flex items-center justify-center relative shadow-xl transition-all ${ath ? 'bg-surface border-2 border-neon' : 'bg-white/5 border-2 border-dashed border-white/20'}`}>
+                                {ath ? <><span className="text-2xl">{ath.photo}</span><button onClick={() => setMySquad({ ...mySquad, [id]: null, cap: isCap ? null : mySquad.cap })} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[8px] font-bold"><i data-lucide="x" className="w-3 h-3"></i></button>
+                                    {isCap && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-1.5 rounded-md text-[8px] font-black animate-bounce">CAP</div>}</> : <i data-lucide="plus" className="text-gray-700"></i>}
+                                {ath && !isCap && <button onClick={() => setMySquad({ ...mySquad, cap: id })} className="absolute -bottom-6 opacity-0 group-hover:opacity-100 bg-yellow-500 text-black text-[7px] font-black px-2 py-0.5 rounded-full transition-all">SET CAP</button>}
+                            </div>
+                            <div className="text-center font-bold">
+                                <span className="text-[8px] text-gray-500 uppercase block leading-none">{label}</span>
+                                {ath && <span className="text-[10px] truncate max-w-[60px] block">{ath.name.split(' ')[0]}</span>}
+                            </div>
+                        </div>
+                    );
+                };
+                return (
+                    <div className="p-5 animate-fade pb-24 flex flex-col gap-6">
+                        <header className="flex justify-between items-center"><h1 className="text-xl font-black italic uppercase">Meu Time</h1><div className="flex flex-col items-end"><span className="text-[9px] font-bold text-gray-500 uppercase">Esquema 1-1-3</span><span className="text-xs text-neon font-black uppercase">CTOlá FC</span></div></header>
+                        <div className="w-full aspect-[4/5] pitch-gradient rounded-[2.5rem] border-4 border-white/10 relative overflow-hidden flex flex-col justify-between py-12 px-6 shadow-2xl">
+                            <div className="absolute inset-4 border border-white/5 rounded-3xl pointer-events-none"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 border border-white/5 rounded-full"></div>
+                            <div className="flex justify-center"><Slot id="gol" label="Goleiro" ath={athletes.find(a => a.id === mySquad.gol)} /></div>
+                            <div className="flex justify-center"><Slot id="fix" label="Fixo" ath={athletes.find(a => a.id === mySquad.fix)} /></div>
+                            <div className="flex justify-around gap-2"><Slot id="l3" label="Ala" ath={athletes.find(a => a.id === mySquad.l3)} /><Slot id="l4" label="Ala" ath={athletes.find(a => a.id === mySquad.l4)} /><Slot id="l5" label="Pivô" ath={athletes.find(a => a.id === mySquad.l5)} /></div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const ScouterView = () => {
+                const [step, setStep] = useState('team');
+                const [selT, setSelT] = useState('');
+                const [selPos, setSelPos] = useState('');
+                const [stats, setStats] = useState({ participou: true, equipeSofreuGoal: false, gols: 0, assists: 0, penPerd: 0, tlDef: 0, penDef: 0, gs: 0, melhorG: false, cap: false });
+
+                const filtered = athletes.filter(a => a.team === selT && a.pos === selPos);
+                const ath = athletes.find(a => a.id === scoutingId);
+                const score = ath ? calculateScore(stats, ath.pos, stats.cap) : 0;
+
+                const Control = ({ l, v, fn }) => (
+                    <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[10px] font-black uppercase text-gray-500">{l}</span>
+                        <div className="flex items-center gap-4"><button onClick={() => fn(Math.max(0, v - 1))} className="w-8 h-8 rounded-xl bg-white/5 font-bold">-</button><span className="w-4 text-center font-black">{v}</span><button onClick={() => fn(v + 1)} className="w-8 h-8 rounded-xl bg-white/5 font-bold">+</button></div>
+                    </div>
+                );
+
+                if (scoutingId) return (
+                    <div className="p-5 animate-fade pb-24">
+                        <button onClick={() => setScoutingId(null)} className="text-neon text-[10px] font-black uppercase mb-6 flex items-center gap-1"><i data-lucide="arrow-left" className="w-3 h-3"></i> Voltar</button>
+                        <div className="glass p-5 rounded-[2.5rem] flex items-center justify-between bg-neon/5 border-neon/30 neo-shadow mb-6">
+                            <div className="flex items-center gap-4"><span className="text-3xl">{ath.photo}</span><div><div className="font-black h-5 italic text-sm">{ath.name}</div><div className="text-[8px] text-gray-500 font-bold uppercase">{ath.team} • {ath.pos}</div></div></div>
+                            <div className="text-right leading-none"><div className="text-2xl font-black text-neon">{score.toFixed(1)}</div><div className="text-[7px] font-black uppercase text-gray-600">Points</div></div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <div className="flex justify-between py-3 border-b border-white/5"><span className="text-[10px] font-black uppercase text-gray-500">Capitão?</span><button onClick={() => setStats({ ...stats, cap: !stats.cap })} className={`px-4 py-1.5 rounded-xl font-bold text-[9px] ${stats.cap ? 'bg-yellow-500 text-black' : 'bg-white/5'}`}>{stats.cap ? 'SIM' : 'NÃO'}</button></div>
+                            <div className="flex justify-between py-3 border-b border-white/5"><span className="text-[10px] font-black uppercase text-gray-500">SG</span><button onClick={() => setStats({ ...stats, equipeSofreuGoal: !stats.equipeSofreuGoal })} className={`px-4 py-1.5 rounded-xl font-bold text-[9px] ${!stats.equipeSofreuGoal ? 'text-green-400' : 'text-red-400'}`}>{!stats.equipeSofreuGoal ? 'ATIVO' : 'INATIVO'}</button></div>
+                            {ath.pos === 'GOLEIRO' ? (
+                                <>
+                                    <Control l="Tiros Livres Def." v={stats.tlDef} fn={v => setStats({ ...stats, tlDef: v })} />
+                                    <Control l="Pênaltis Def." v={stats.penDef} fn={v => setStats({ ...stats, penDef: v })} />
+                                    <Control l="Gols Sofridos" v={stats.gs} fn={v => setStats({ ...stats, gs: v })} />
+                                    <div className="flex justify-between py-3"><span className="text-[10px] font-black uppercase text-gray-500">Melhor Goleiro?</span><button onClick={() => setStats({ ...stats, melhorG: !stats.melhorG })} className={`px-4 py-1.5 rounded-xl font-bold text-[9px] ${stats.melhorG ? 'bg-yellow-500 text-black' : 'bg-white/5'}`}>{stats.melhorG ? 'SIM' : 'NÃO'}</button></div>
+                                </>
+                            ) : (
+                                <>
+                                    <Control l="Gols" v={stats.gols} fn={v => setStats({ ...stats, gols: v })} />
+                                    <Control l="Assistências" v={stats.assists} fn={v => setStats({ ...stats, assists: v })} />
+                                    <Control l="Pênalti Perdido" v={stats.penPerd} fn={v => setStats({ ...stats, penPerd: v })} />
+                                </>
+                            )}
+                        </div>
+                        <button className="w-full bg-white text-black font-black py-4 rounded-3xl mt-8 shadow-xl uppercase text-xs">Salvar Scouts</button>
+                    </div>
+                );
+
+                return (
+                    <div className="p-5 animate-fade pb-24 flex flex-col gap-6">
+                        <header><h1 className="text-xl font-black italic uppercase">Lançar Rodada</h1></header>
+                        {step === 'team' ? teams.map(t => <button key={t} onClick={() => { setSelT(t); setStep('pos'); }} className="glass p-5 rounded-3xl text-left font-black flex justify-between uppercase text-xs">{t} <i data-lucide="chevron-right" className="w-4 h-4 opacity-30"></i></button>) :
+                            step === 'pos' ? <div className="flex flex-col gap-2"><button onClick={() => setStep('team')} className="text-neon p-2 text-[10px] font-black uppercase flex items-center gap-1"><i data-lucide="arrow-left" className="w-3 h-3"></i> Mudar Time</button>{['GOLEIRO', 'FIXO', 'LINE'].map(p => <button key={p} onClick={() => { setSelPos(p); setStep('play'); }} className="glass p-5 rounded-3xl text-left font-black uppercase text-xs">{p}</button>)}</div> :
+                                <div className="flex flex-col gap-2"><button onClick={() => setStep('pos')} className="text-neon p-2 text-[10px] font-black uppercase flex items-center gap-1"><i data-lucide="arrow-left" className="w-3 h-3"></i> Posições</button>{filtered.map(a => <button key={a.id} onClick={() => setScoutingId(a.id)} className="glass p-4 rounded-3xl text-left flex items-center gap-4"><span className="text-2xl">{a.photo}</span><span className="font-bold text-sm">{a.name}</span></button>)}</div>}
+                    </div>
+                );
+            };
+
+            const GestaoView = () => {
+                const [nt, setNt] = useState('');
+                const [na, setNa] = useState({ name: '', team: teams[0], pos: 'LINE', photo: '👤' });
+                return (
+                    <div className="p-5 animate-fade pb-24 flex flex-col gap-10">
+                        <section className="flex flex-col gap-3 h-32">
+                            <h2 className="text-xl font-black italic uppercase italic">Add Time</h2>
+                            <div className="flex gap-2 h-14">
+                                <input value={nt} onChange={e => setNt(e.target.value)} placeholder="Novo Time" className="flex-1 bg-white/5 border-none px-5 py-4 text-sm rounded-2xl outline-none" />
+                                <button onClick={() => { if (nt) { setTeams([...teams, nt]); setNt(''); } }} className="bg-neon text-black px-6 rounded-2xl font-black text-xl">+</button>
+                            </div>
+                        </section>
+                        <section className="flex flex-col gap-4">
+                            <h2 className="text-xs font-black text-gray-500 uppercase tracking-widest">Novo Atleta</h2>
+                            <div className="glass p-6 rounded-[2rem] flex flex-col gap-4 shadow-xl">
+                                <input value={na.name} onChange={e => setNa({ ...na, name: e.target.value })} placeholder="Nome" className="bg-white/5 px-4 py-4 text-sm rounded-2xl" />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <select value={na.team} onChange={e => setNa({ ...na, team: e.target.value })} className="bg-[#1a1d23] px-3 py-4 rounded-xl text-xs uppercase font-bold">{teams.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                    <select value={na.pos} onChange={e => setNa({ ...na, pos: e.target.value })} className="bg-[#1a1d23] px-3 py-4 rounded-xl text-xs uppercase font-bold"><option value="GOLEIRO">Goleiro</option><option value="FIXO">Fixo</option><option value="LINE">3, 4 ou 5</option></select>
+                                </div>
+                                <button onClick={() => { if (na.name) { setAthletes([...athletes, { ...na, id: Date.now(), price: 10 }]); setNa({ ...na, name: '' }); } }} className="w-full bg-white text-black font-black py-4 rounded-3xl uppercase text-xs">Cadastrar Atleta</button>
+                            </div>
+                        </section>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden bg-[#0f1115]">
+                    {showLogin && <LoginOverlay />}
+                    {view === 'home' && <HomeView />}
+                    {view === 'mercado' && <MarketView />}
+                    {view === 'time' && <TeamView />}
+                    {view === 'scouter' && <ScouterView />}
+                    {view === 'gestao' && <GestaoView />}
+                    {view === 'perfil' && <ProfileSection />}
+                    <Navbar />
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
