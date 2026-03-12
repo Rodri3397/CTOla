@@ -36,7 +36,7 @@ const MyTeam = () => {
             useStore.getState().fetchLeagueData();
             loadDbSquad();
         }
-    }, [currentLeagueId, activeRoundId]);
+    }, [currentLeagueId]);
 
     const loadDbSquad = async () => {
         const dbSquad = await fetchUserSquad();

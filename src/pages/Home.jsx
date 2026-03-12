@@ -130,12 +130,22 @@ export default function Home() {
     return (
         <div className="flex flex-col gap-6 animate-fade pb-24">
             <header className="flex flex-col gap-4 px-1">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-start">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-black italic text-white flex gap-1 leading-none">
                             CT <span className="text-neon">ola</span>
                         </h1>
                         <span className="text-[7px] font-black uppercase text-gray-600 tracking-[0.4em] ml-0.5 mt-1">Fantasy League</span>
+                        
+                        {/* Active League Name Display */}
+                        {currentLeagueId && (
+                            <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-neon/10 rounded-xl border border-neon/20 w-fit">
+                                <Trophy size={10} className="text-neon" />
+                                <span className="text-[9px] font-black text-neon uppercase tracking-widest leading-none">
+                                    {myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'Carregando...'}
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <div
                         onClick={() => navigate('/perfil')}

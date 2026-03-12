@@ -12,11 +12,11 @@ export default function Market() {
     const activeRound = rounds.find(r => r.id === activeRoundId);
     const isMarketOpen = activeRound?.status === 'open' || !activeRound;
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (currentLeagueId) {
-            fetchAthletes();
+            useStore.getState().fetchLeagueData();
         }
-    }, [currentLeagueId, fetchAthletes]);
+    }, [currentLeagueId]);
 
     const filteredAthletes = (athletes || []).filter(a =>
         a.name.toLowerCase().includes(search.toLowerCase()) ||

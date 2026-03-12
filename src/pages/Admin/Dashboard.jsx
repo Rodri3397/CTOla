@@ -45,6 +45,10 @@ export default function AdminDashboard() {
     const [scoutFeed, setScoutFeed] = useState([]);
 
     useEffect(() => {
+        setIsAuthorized(false); // Reset auth on league change
+        setPassword('');
+        setPassError(false);
+        
         fetchMyLeagues();
         if (currentLeagueId) {
             fetchTeams();
@@ -56,12 +60,13 @@ export default function AdminDashboard() {
 
     const handleCreateLeague = async () => {
         if (!newLeagueName || !leagueAdminCode) return;
-        const { error } = await createLeague(newLeagueName, isPublic, leagueAdminCode.toUpperCase());
-        if (!error) {
+        const { error, data } = await createLeague(newLeagueName, isPublic, leagueAdminCode.toUpperCase());
+        if (!error && data) {
             setNewLeagueName('');
             setLeagueAdminCode('');
             setShowCreateLeague(false);
             setIsPublic(true);
+            setCurrentLeague(data[0].id); // Select the new league immediately
             setIsAuthorized(true);
         }
     };
@@ -207,24 +212,26 @@ export default function AdminDashboard() {
                     </button>
                 </div>
 
-                <div className="flex gap-2 p-1 bg-[#1a1d23] rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
-                    {[
-                        { id: 'overview', label: 'Geral', icon: LayoutDashboard },
-                        { id: 'scouts', label: 'Pontuar', icon: Trophy },
-                        { id: 'teams', label: `Times (${teams.length})`, icon: Shield },
-                        { id: 'athletes', label: `Atletas (${athletes.length})`, icon: Users },
-                        { id: 'members', label: 'Membros', icon: UserPlus }
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-neon text-black neo-shadow' : 'text-gray-500 hover:text-white'}`}
-                        >
-                            <tab.icon size={12} />
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+                {isAuthorized && (
+                    <div className="flex gap-2 p-1 bg-[#1a1d23] rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
+                        {[
+                            { id: 'overview', label: 'Geral', icon: LayoutDashboard },
+                            { id: 'scouts', label: 'Pontuar', icon: Trophy },
+                            { id: 'teams', label: `Times (${teams.length})`, icon: Shield },
+                            { id: 'athletes', label: `Atletas (${athletes.length})`, icon: Users },
+                            { id: 'members', label: 'Membros', icon: UserPlus }
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-neon text-black neo-shadow' : 'text-gray-500 hover:text-white'}`}
+                            >
+                                <tab.icon size={12} />
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </header>
 
             {/* Notification Toast */}
