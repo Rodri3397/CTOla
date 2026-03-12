@@ -9,12 +9,15 @@ const MyTeam = () => {
     const {
         athletes, teams, fetchAthletes, fetchTeams, currentLeagueId,
         saveUserSquad, fetchUserSquad, activeRoundId, rounds,
-        draftSquad, draftCaptainId, setDraftSquad, setDraftCaptain
+        draftSquad, draftCaptainId, setDraftSquad, setDraftCaptain,
+        myFollowedLeaguesDetails, updateTeamName
     } = useStore();
     const navigate = useNavigate();
 
     const [isSaving, setIsSaving] = useState(false);
     const [modalData, setModalData] = useState({ isOpen: false, slot: null, pos: null, step: 'teams', selectedTeamId: null });
+    const [tempTeamName, setTempTeamName] = useState('');
+    const [isNamingTeam, setIsNamingTeam] = useState(false);
 
     const activeRound = rounds.find(r => r.id === activeRoundId);
     const isMarketOpen = activeRound?.status === 'open' || !activeRound;
@@ -24,6 +27,9 @@ const MyTeam = () => {
     Object.entries(draftSquad).forEach(([slot, id]) => {
         squadObjects[slot] = athletes.find(a => a.id === id) || null;
     });
+
+    const currentLeagueMember = myFollowedLeaguesDetails.find(l => l.id === currentLeagueId);
+    const hasTeamName = !!currentLeagueMember?.team_name;
 
     useEffect(() => {
         if (currentLeagueId) {
@@ -235,6 +241,52 @@ const MyTeam = () => {
                                         )}
                                     </>
                                 )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+            {/* Team Naming Modal */}
+            <AnimatePresence>
+                {!hasTeamName && currentLeagueId && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="w-full max-w-sm glass-dark p-10 rounded-[3rem] border border-neon/20 flex flex-col gap-8 shadow-2xl shadow-neon/5"
+                        >
+                            <div className="flex flex-col items-center gap-6">
+                                <div className="w-20 h-20 bg-neon/10 rounded-[2.5rem] flex items-center justify-center border border-neon/20">
+                                    <Shield className="text-neon" size={36} />
+                                </div>
+                                <div className="text-center">
+                                    <h2 className="text-xl font-black italic uppercase text-white tracking-tighter">Batize seu Time</h2>
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2 leading-relaxed">
+                                        Como sua equipe será conhecida nesta liga?
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-4">
+                                <input
+                                    type="text"
+                                    value={tempTeamName}
+                                    onChange={(e) => setTempTeamName(e.target.value)}
+                                    placeholder="NOME DO TIME (EX: MITOS FC)"
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-center text-sm font-black uppercase tracking-widest outline-none focus:border-neon transition-all"
+                                />
+                                <button
+                                    onClick={async () => {
+                                        if (!tempTeamName.trim()) return;
+                                        setIsNamingTeam(true);
+                                        await updateTeamName(currentLeagueId, tempTeamName.trim());
+                                        setIsNamingTeam(false);
+                                    }}
+                                    disabled={isNamingTeam || !tempTeamName.trim()}
+                                    className="w-full bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                                >
+                                    {isNamingTeam ? <Loader2 className="animate-spin mx-auto" size={16} /> : 'Começar a Escalar'}
+                                </button>
                             </div>
                         </motion.div>
                     </div>

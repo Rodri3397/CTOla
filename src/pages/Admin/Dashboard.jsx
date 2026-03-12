@@ -19,9 +19,9 @@ export default function AdminDashboard() {
     const [teamName, setTeamName] = useState('');
     const [athlete, setAthlete] = useState({ name: '', pos: 'ALA', price: '5.00', team_id: '' });
     const [searchTerm, setSearchTerm] = useState('');
-    const [showCreateLeague, setShowCreateLeague] = useState(false);
     const [newLeagueName, setNewLeagueName] = useState('');
     const [isPublic, setIsPublic] = useState(true);
+    const [leagueAdminCode, setLeagueAdminCode] = useState('');
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [password, setPassword] = useState('');
     const [passError, setPassError] = useState(false);
@@ -53,12 +53,14 @@ export default function AdminDashboard() {
     }, [fetchMyLeagues, fetchTeams, fetchAthletes, fetchRounds, fetchLeagueMembers, currentLeagueId]);
 
     const handleCreateLeague = async () => {
-        if (!newLeagueName) return;
-        const { error } = await createLeague(newLeagueName, isPublic);
+        if (!newLeagueName || !leagueAdminCode) return;
+        const { error } = await createLeague(newLeagueName, isPublic, leagueAdminCode.toUpperCase());
         if (!error) {
             setNewLeagueName('');
+            setLeagueAdminCode('');
             setShowCreateLeague(false);
             setIsPublic(true);
+            setIsAuthorized(true); // Auto-authorize for the newly created league
         }
     };
 
@@ -162,6 +164,86 @@ export default function AdminDashboard() {
         a.teams?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // 0. CREATE MODAL (Must be at the very top to bypass all locks)
+    if (showCreateLeague) {
+        return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="w-full max-w-sm glass-dark p-10 rounded-[3rem] border border-white/10 flex flex-col gap-8 shadow-2xl"
+                >
+                    <div className="text-center">
+                        <h3 className="text-xl font-black italic uppercase text-white tracking-tighter">Nova Competição</h3>
+                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2">Personalize sua liga agora</p>
+                    </div>
+
+                    <div className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[7px] font-black uppercase text-gray-400 tracking-widest px-2">Nome da Liga</span>
+                            <input
+                                type="text"
+                                value={newLeagueName}
+                                onChange={(e) => setNewLeagueName(e.target.value)}
+                                placeholder="EX: COPA DOS CAMPEÕES"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold outline-none focus:border-neon transition-all"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[7px] font-black uppercase text-neon tracking-widest px-2 italic">Sua Senha Mestre de Admin</span>
+                            <input
+                                type="text"
+                                value={leagueAdminCode}
+                                onChange={(e) => setLeagueAdminCode(e.target.value.toUpperCase())}
+                                placeholder="EX: BOSS2024"
+                                className="w-full bg-neon/5 border border-neon/30 rounded-2xl px-6 py-4 text-xs font-black tracking-widest outline-none focus:border-neon transition-all placeholder:text-[8px] placeholder:font-bold placeholder:tracking-normal"
+                            />
+                            <p className="text-[6px] text-gray-600 font-bold uppercase tracking-widest px-2">Essa será a sua chave pessoal para acessar o painel de gestão desta liga.</p>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[7px] font-black uppercase text-gray-400 tracking-widest px-2">Privacidade</span>
+                            <div className="flex p-1 bg-white/5 rounded-2xl border border-white/5 gap-1">
+                                <button
+                                    onClick={() => setIsPublic(true)}
+                                    className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${isPublic ? 'bg-neon text-black' : 'text-gray-500'}`}
+                                >
+                                    Pública
+                                </button>
+                                <button
+                                    onClick={() => setIsPublic(false)}
+                                    className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${!isPublic ? 'bg-red-500 text-white' : 'text-gray-500'}`}
+                                >
+                                    Privada
+                                </button>
+                            </div>
+                            <p className="text-[7px] text-gray-600 font-bold uppercase tracking-[0.05em] px-2 italic mt-1 leading-tight">
+                                {isPublic ? 'Ligas públicas aparecem na aba Explorar para todos.' : 'Ligas privadas só podem ser acessadas com o Código de Convite.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                        <button
+                            onClick={() => setShowCreateLeague(false)}
+                            className="flex-1 py-5 rounded-2xl text-[9px] font-black uppercase text-gray-500 tracking-widest"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleCreateLeague}
+                            disabled={loading || !newLeagueName || !leagueAdminCode}
+                            className="flex-[2] bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                        >
+                            {loading ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Criar Liga'}
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
     // Definitive Loading State
     if (loading && myLeagues.length === 0) {
         return (
@@ -194,72 +276,6 @@ export default function AdminDashboard() {
 
     const currentLeague = myLeagues.find(l => l.id === currentLeagueId);
 
-    if (showCreateLeague) {
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="w-full max-w-sm glass-dark p-10 rounded-[3rem] border border-white/10 flex flex-col gap-8 shadow-2xl"
-                >
-                    <div className="text-center">
-                        <h3 className="text-xl font-black italic uppercase text-white tracking-tighter">Nova Competição</h3>
-                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2">Personalize sua liga agora</p>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-2">
-                            <span className="text-[7px] font-black uppercase text-gray-400 tracking-widest px-2">Nome da Liga</span>
-                            <input
-                                type="text"
-                                value={newLeagueName}
-                                onChange={(e) => setNewLeagueName(e.target.value)}
-                                placeholder="EX: COPA DOS CAMPEÕES"
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-neon transition-all"
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                            <span className="text-[7px] font-black uppercase text-gray-400 tracking-widest px-2">Privacidade</span>
-                            <div className="flex p-1 bg-white/5 rounded-2xl border border-white/5 gap-1">
-                                <button
-                                    onClick={() => setIsPublic(true)}
-                                    className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${isPublic ? 'bg-neon text-black' : 'text-gray-500'}`}
-                                >
-                                    Pública
-                                </button>
-                                <button
-                                    onClick={() => setIsPublic(false)}
-                                    className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${!isPublic ? 'bg-red-500 text-white' : 'text-gray-500'}`}
-                                >
-                                    Privada
-                                </button>
-                            </div>
-                            <p className="text-[7px] text-gray-600 font-bold uppercase tracking-[0.05em] px-2 italic mt-1">
-                                {isPublic ? 'Ligas públicas aparecem na aba Explorar para todos.' : 'Ligas privadas só podem ser acessadas com o Código de Convite.'}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            onClick={() => setShowCreateLeague(false)}
-                            className="flex-1 py-5 rounded-2xl text-[9px] font-black uppercase text-gray-500 tracking-widest"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={handleCreateLeague}
-                            disabled={loading || !newLeagueName}
-                            className="flex-[2] bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
-                        >
-                            {loading ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Criar Liga'}
-                        </button>
-                    </div>
-                </motion.div>
-            </div>
-        );
-    }
 
     if (!isAuthorized) {
         return (

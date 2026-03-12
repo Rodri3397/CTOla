@@ -68,6 +68,7 @@ export const useStore = create((set, get) => ({
                 .select(`
                     league_id,
                     role,
+                    team_name,
                     leagues (
                         id,
                         name,
@@ -80,7 +81,7 @@ export const useStore = create((set, get) => ({
             if (error) throw error;
             set({
                 myFollowedLeagues: data?.map(d => d.league_id) || [],
-                myFollowedLeaguesDetails: data?.map(d => ({ ...d.leagues, role: d.role })) || []
+                myFollowedLeaguesDetails: data?.map(d => ({ ...d.leagues, role: d.role, team_name: d.team_name })) || []
             });
         } catch (err) {
             console.error('Error fetching followed leagues:', err);
@@ -127,7 +128,7 @@ export const useStore = create((set, get) => ({
         }
     },
 
-    createLeague: async (name, isPublic = true) => {
+    createLeague: async (name, isPublic = true, adminCode) => {
         const { user } = get();
         if (!user) return { error: 'Not authenticated' };
 
@@ -151,7 +152,8 @@ export const useStore = create((set, get) => ({
                 await supabase.from('league_members').insert({
                     league_id: data[0].id,
                     user_id: user.id,
-                    role: 'OWNER'
+                    role: 'OWNER',
+                    admin_code: adminCode
                 });
 
                 set(state => ({
@@ -209,6 +211,31 @@ export const useStore = create((set, get) => ({
             return { error: null };
         } catch (err) {
             console.error("Update role error:", err);
+            set({ loading: false });
+            return { error: err.message };
+        }
+    },
+
+    updateTeamName: async (leagueId, teamName) => {
+        const { user } = get();
+        if (!user) return { error: 'Not authenticated' };
+
+        set({ loading: true });
+        try {
+            const { error } = await supabase
+                .from('league_members')
+                .update({ team_name: teamName })
+                .eq('league_id', leagueId)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+            
+            // Refresh local detail state if needed
+            await get().fetchMyFollowedLeagues();
+            set({ loading: false });
+            return { error: null };
+        } catch (err) {
+            console.error("Update team name error:", err);
             set({ loading: false });
             return { error: err.message };
         }
