@@ -33,8 +33,7 @@ const MyTeam = () => {
 
     useEffect(() => {
         if (currentLeagueId) {
-            fetchAthletes();
-            fetchTeams();
+            useStore.getState().fetchLeagueData();
             loadDbSquad();
         }
     }, [currentLeagueId, activeRoundId]);

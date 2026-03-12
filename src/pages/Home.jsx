@@ -8,7 +8,7 @@ import RoundSelector from '../components/RoundSelector';
 
 export default function Home() {
     const {
-        teams, fetchTeams, feed, fetchFeed, loading, activeRoundId, rounds,
+        teams, fetchLeagueData, feed, loading, activeRoundId, rounds,
         currentLeagueId, setCurrentLeague, supabase, profile, myFollowedLeaguesDetails
     } = useStore();
     const navigate = useNavigate();
@@ -18,17 +18,11 @@ export default function Home() {
 
     useEffect(() => {
         if (currentLeagueId) {
-            fetchTeams();
-            fetchFeed();
+            fetchLeagueData();
             fetchAllStats();
             loadSquad();
         }
-        // Poll feed every 30 seconds
-        const interval = setInterval(() => {
-            if (currentLeagueId) fetchFeed();
-        }, 30000);
-        return () => clearInterval(interval);
-    }, [fetchTeams, fetchFeed, activeRoundId, currentLeagueId]);
+    }, [currentLeagueId, activeRoundId]);
 
     const loadSquad = async () => {
         const { fetchUserSquad } = useStore.getState();

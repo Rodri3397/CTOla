@@ -18,11 +18,12 @@ export const useStore = create((set, get) => ({
     draftCaptainId: localStorage.getItem('ctola_draft_captain') || null,
     leagueMembers: [], // Members of the currently active league for management
     feed: [],
-    loading: false,
-    error: null,
-    user: null,
-    profile: null,
-    supabase: supabase,
+    notification: null, // { message: '', type: 'success' | 'error' }
+    
+    setNotification: (notif) => {
+        set({ notification: notif });
+        if (notif) setTimeout(() => set({ notification: null }), 3000);
+    },
 
     // League Actions
     setCurrentLeague: (id) => {
@@ -195,8 +196,28 @@ export const useStore = create((set, get) => ({
         }
     },
 
+    // Unified fetch for all league data to avoid multiple loading flickers
+    fetchLeagueData: async () => {
+        const { currentLeagueId } = get();
+        if (!currentLeagueId || currentLeagueId === 'null') return;
+
+        set({ loading: true, error: null });
+        try {
+            await Promise.all([
+                get().fetchTeams(),
+                get().fetchAthletes(),
+                get().fetchRounds(),
+                get().fetchFeed()
+            ]);
+        } catch (err) {
+            set({ error: err.message });
+        } finally {
+            set({ loading: false });
+        }
+    },
+
     updateMemberRole: async (leagueId, userId, newRole) => {
-        set({ loading: true });
+        set({ loading: true, error: null });
         try {
             const { error } = await supabase
                 .from('league_members')
@@ -211,7 +232,7 @@ export const useStore = create((set, get) => ({
             return { error: null };
         } catch (err) {
             console.error("Update role error:", err);
-            set({ loading: false });
+            set({ error: err.message, loading: false });
             return { error: err.message };
         }
     },
@@ -220,7 +241,7 @@ export const useStore = create((set, get) => ({
         const { user } = get();
         if (!user) return { error: 'Not authenticated' };
 
-        set({ loading: true });
+        set({ loading: true, error: null });
         try {
             const { error } = await supabase
                 .from('league_members')
@@ -230,13 +251,18 @@ export const useStore = create((set, get) => ({
 
             if (error) throw error;
             
-            // Refresh local detail state if needed
-            await get().fetchMyFollowedLeagues();
+            // Update local details without full refetch
+            set(state => ({
+                myFollowedLeaguesDetails: state.myFollowedLeaguesDetails.map(l => 
+                    l.id === leagueId ? { ...l, team_name: teamName } : l
+                )
+            }));
+            
             set({ loading: false });
             return { error: null };
         } catch (err) {
             console.error("Update team name error:", err);
-            set({ loading: false });
+            set({ error: err.message, loading: false });
             return { error: err.message };
         }
     },
@@ -413,10 +439,12 @@ export const useStore = create((set, get) => ({
 
             if (error) throw error;
             set({ loading: false });
+            get().setNotification({ message: 'Escalação confirmada!', type: 'success' });
             return { data, error: null };
         } catch (err) {
             console.error('Error saving squad:', err);
             set({ error: err.message, loading: false });
+            get().setNotification({ message: 'Erro ao salvar: ' + err.message, type: 'error' });
             return { error: err.message };
         }
     },
@@ -709,6 +737,42 @@ export const useStore = create((set, get) => ({
         }
     },
 
+    updateAthlete: async (athleteId, updates) => {
+        set({ loading: true, error: null });
+        try {
+            const { error } = await supabase
+                .from('athletes')
+                .update(updates)
+                .eq('id', athleteId);
+
+            if (error) throw error;
+            await get().fetchAthletes();
+            set({ loading: false });
+            return { error: null };
+        } catch (err) {
+            set({ error: err.message, loading: false });
+            return { error: err.message };
+        }
+    },
+
+    updateTeam: async (teamId, name) => {
+        set({ loading: true, error: null });
+        try {
+            const { error } = await supabase
+                .from('teams')
+                .update({ name })
+                .eq('id', teamId);
+
+            if (error) throw error;
+            await get().fetchTeams();
+            set({ loading: false });
+            return { error: null };
+        } catch (err) {
+            set({ error: err.message, loading: false });
+            return { error: err.message };
+        }
+    },
+
     deleteAthlete: async (athleteId) => {
         set({ loading: true });
         try {
@@ -774,6 +838,9 @@ export const useStore = create((set, get) => ({
 
         if (!error) {
             await get().fetchFeed();
+            get().setNotification({ message: 'Pontuação salva!', type: 'success' });
+        } else {
+            get().setNotification({ message: 'Erro ao salvar: ' + error.message, type: 'error' });
         }
         set({ loading: false });
         return { data, error };
@@ -781,22 +848,25 @@ export const useStore = create((set, get) => ({
 
     // --- GAME LOOP FUNCTIONS ---
 
-    // Update round status (open/locked)
+    // Update round status (open/locked) with optimistic update
     updateRoundStatus: async (roundId, status) => {
-        set({ loading: true });
+        const prevRounds = get().rounds;
+        // Optimistically update
+        set({
+            rounds: prevRounds.map(r => r.id === roundId ? { ...r, status } : r)
+        });
+
         const { error } = await supabase
             .from('rounds')
             .update({ status })
             .eq('id', roundId);
 
-        if (!error) {
-            const { rounds } = get();
-            set({
-                rounds: rounds.map(r => r.id === roundId ? { ...r, status } : r),
-                loading: false
-            });
+        if (error) {
+            // Rollback on error
+            set({ rounds: prevRounds });
+            get().setNotification({ message: 'Erro ao atualizar mercado: ' + error.message, type: 'error' });
         } else {
-            set({ error: error.message, loading: false });
+            get().setNotification({ message: `Mercado ${status === 'open' ? 'Aberto' : 'Fechado'} com sucesso!`, type: 'success' });
         }
         return { error };
     },

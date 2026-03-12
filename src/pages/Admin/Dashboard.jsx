@@ -6,8 +6,8 @@ import RoundSelector from '../../components/RoundSelector';
 
 export default function AdminDashboard() {
     const {
-        addTeam, addAthlete, deleteTeam, deleteAthlete,
-        teams, fetchTeams, athletes, fetchAthletes, loading, error,
+        addTeam, addAthlete, deleteTeam, deleteAthlete, updateAthlete, updateTeam,
+        teams, fetchTeams, athletes, fetchAthletes, loading, error, notification, setNotification,
         createLeague, myLeagues, fetchMyLeagues, currentLeagueId, setCurrentLeague,
         updateRoundStatus, finishRound, startNextRound, activeRoundId, rounds, fetchRounds, supabase, user,
         fetchLeagueMembers, updateMemberRole, leagueMembers
@@ -17,6 +17,8 @@ export default function AdminDashboard() {
 
     const [activeTab, setActiveTab] = useState('overview');
     const [teamName, setTeamName] = useState('');
+    const [editingTeam, setEditingTeam] = useState(null);
+    const [editingAthlete, setEditingAthlete] = useState(null);
     const [athlete, setAthlete] = useState({ name: '', pos: 'ALA', price: '5.00', team_id: '' });
     const [searchTerm, setSearchTerm] = useState('');
     const [showCreateLeague, setShowCreateLeague] = useState(false);
@@ -225,6 +227,108 @@ export default function AdminDashboard() {
                 </div>
             </header>
 
+            {/* Notification Toast */}
+            <AnimatePresence>
+                {notification && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className={`fixed bottom-10 left-6 right-6 z-[200] p-5 rounded-3xl border shadow-2xl backdrop-blur-xl flex items-center justify-between ${
+                            notification.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-red-500/10 border-red-500/20 text-red-500'
+                        }`}
+                    >
+                        <span className="text-[10px] font-black uppercase tracking-widest">{notification.message}</span>
+                        <button onClick={() => setNotification(null)} className="p-2 hover:scale-110">✕</button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Team Modal */}
+            <AnimatePresence>
+                {editingTeam && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+                        <div className="w-full max-w-sm glass p-8 rounded-[2.5rem] border border-white/10 flex flex-col gap-6">
+                            <h3 className="text-xl font-black italic uppercase text-white">Editar Time</h3>
+                            <input
+                                type="text"
+                                value={editingTeam.name}
+                                onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white"
+                            />
+                            <div className="flex gap-3">
+                                <button onClick={() => setEditingTeam(null)} className="flex-1 py-4 text-[10px] font-black uppercase text-gray-500">Cancelar</button>
+                                <button
+                                    onClick={async () => {
+                                        const { error } = await updateTeam(editingTeam.id, editingTeam.name);
+                                        if (!error) {
+                                            setEditingTeam(null);
+                                            setNotification({ message: 'Time atualizado!', type: 'success' });
+                                        }
+                                    }}
+                                    className="flex-[2] bg-neon text-black py-4 rounded-2xl font-black text-[10px] uppercase"
+                                >
+                                    Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Athlete Modal */}
+            <AnimatePresence>
+                {editingAthlete && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+                        <div className="w-full max-w-sm glass p-8 rounded-[2.5rem] border border-white/10 flex flex-col gap-6">
+                            <h3 className="text-xl font-black italic uppercase text-white">Editar Atleta</h3>
+                            <div className="flex flex-col gap-4">
+                                <input
+                                    type="text"
+                                    value={editingAthlete.name}
+                                    onChange={(e) => setEditingAthlete({ ...editingAthlete, name: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white"
+                                />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <select
+                                        value={editingAthlete.pos}
+                                        onChange={(e) => setEditingAthlete({ ...editingAthlete, pos: e.target.value })}
+                                        className="bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-[10px] font-black uppercase text-white"
+                                    >
+                                        <option value="GOLEIRO">Goleiro</option><option value="FIXO">Fixo</option><option value="ALA">Ala</option><option value="PIVO">Pivô</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={editingAthlete.price}
+                                        onChange={(e) => setEditingAthlete({ ...editingAthlete, price: e.target.value })}
+                                        className="bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-[10px] font-black text-center text-neon"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button onClick={() => setEditingAthlete(null)} className="flex-1 py-4 text-[10px] font-black uppercase text-gray-500">Cancelar</button>
+                                <button
+                                    onClick={async () => {
+                                        const { error } = await updateAthlete(editingAthlete.id, {
+                                            name: editingAthlete.name,
+                                            pos: editingAthlete.pos,
+                                            price: parseFloat(String(editingAthlete.price).replace(',', '.'))
+                                        });
+                                        if (!error) {
+                                            setEditingAthlete(null);
+                                            setNotification({ message: 'Atleta atualizado!', type: 'success' });
+                                        }
+                                    }}
+                                    className="flex-[2] bg-neon text-black py-4 rounded-2xl font-black text-[10px] uppercase"
+                                >
+                                    Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <AnimatePresence mode="wait">
                 {showCreateLeague ? (
                     <motion.div
@@ -298,21 +402,33 @@ export default function AdminDashboard() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex flex-col gap-4">
                                     <span className="text-[8px] font-black uppercase text-gray-500 italic">Status do Mercado</span>
-                                    <span className="text-lg font-black uppercase italic text-white">{activeRound?.status === 'open' ? 'Aberto' : 'Fechado'}</span>
-                                    <button onClick={() => updateRoundStatus(activeRoundId, activeRound?.status === 'open' ? 'locked' : 'open')} className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest ${activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+                                    <span className="text-lg font-black uppercase italic text-white">
+                                        {activeRound?.status === 'open' ? (
+                                            <span className="text-green-500">Aberto</span>
+                                        ) : (
+                                            <span className="text-red-500 text-opacity-50">Fechado</span>
+                                        )}
+                                    </span>
+                                    <button 
+                                        onClick={() => updateRoundStatus(activeRoundId, activeRound?.status === 'open' ? 'locked' : 'open')} 
+                                        className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all ${activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-black'}`}
+                                    >
                                         {activeRound?.status === 'open' ? 'Fechar Mercado' : 'Abrir Mercado'}
                                     </button>
                                 </div>
                                 <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex flex-col gap-4">
                                     <span className="text-[8px] font-black uppercase text-gray-500 italic">Rodada Atual</span>
-                                    <span className="text-lg font-black uppercase italic text-white">Rodada {activeRound?.number || 1}</span>
+                                    <span className="text-lg font-black uppercase italic text-white flex items-center gap-2">
+                                        Rodada {activeRound?.number || 1}
+                                        {loading && <Loader2 className="animate-spin text-neon" size={14} />}
+                                    </span>
                                     <button onClick={async () => {
                                         if (!activeRoundId) { await startNextRound(currentLeagueId); return; }
-                                        if (window.confirm('Encerrar rodada?')) {
+                                        if (window.confirm('Encerrar rodada? Isso salvará os pontos finais.')) {
                                             const { error } = await finishRound(activeRoundId);
                                             if (!error) await startNextRound(currentLeagueId);
                                         }
-                                    }} className="w-full py-4 bg-neon text-black rounded-2xl font-black text-[9px] uppercase tracking-widest">Finalizar e Próxima</button>
+                                    }} className="w-full py-4 bg-neon text-black rounded-2xl font-black text-[9px] uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all">Finalizar e Próxima</button>
                                 </div>
                             </div>
                         </div>
@@ -383,7 +499,10 @@ export default function AdminDashboard() {
                         {teams.map(t => (
                             <div key={t.id} className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between group">
                                 <span className="text-xs font-bold text-white uppercase">{t.name}</span>
-                                <button onClick={() => deleteTeam(t.id)} className="p-3 text-gray-700 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setEditingTeam(t)} className="p-3 bg-white/5 rounded-xl text-gray-500 hover:text-neon transition-all"><Info size={16} /></button>
+                                    <button onClick={() => deleteTeam(t.id)} className="p-3 text-gray-700 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                                </div>
                             </div>
                         ))}
                     </motion.div>
@@ -405,12 +524,15 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex flex-col gap-2">
                             {filteredAthletes.map(a => (
-                                <div key={a.id} className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between">
+                                <div key={a.id} className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between group">
                                     <div className="flex flex-col font-bold">
                                         <span className="text-xs text-white uppercase">{a.name}</span>
                                         <span className="text-[8px] text-gray-600 uppercase tracking-widest">{a.teams?.name} | {a.pos}</span>
                                     </div>
-                                    <button onClick={() => deleteAthlete(a.id)} className="p-2 text-gray-700 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setEditingAthlete(a)} className="p-3 bg-white/5 rounded-xl text-gray-500 hover:text-neon transition-all"><Info size={14} /></button>
+                                        <button onClick={() => deleteAthlete(a.id)} className="p-2 text-gray-700 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

@@ -32,17 +32,17 @@ export function calculateScore(stats, position, isCaptain = false) {
     const type = mapPositionToType(position);
     let score = 0;
 
-    // Garantir valores padrão
+    // Garantir valores padrão (snake_case do DB)
     const s = {
         gols: stats.gols || 0,
         assistencias: stats.assistencias || 0,
-        penaltisPerdidos: stats.penaltisPerdidos || 0,
-        tirosLivresDefendidos: stats.tirosLivresDefendidos || 0,
-        penaltisDefendidos: stats.penaltisDefendidos || 0,
-        golsSofridos: stats.golsSofridos || 0,
-        bonusMelhorGoleiro: stats.melhorGoleiro ? 5 : 0,
+        penaltisPerdidos: stats.penaltisperdidos || 0,
+        tirosLivresDefendidos: stats.tiroslivresdefendidos || 0,
+        penaltisDefendidos: stats.penaltisdefendidos || 0,
+        golsSofridos: stats.golssofridos || 0,
+        bonusMelhorGoleiro: stats.melhorgoleiro ? 5 : 0,
         participou: stats.participou !== undefined ? stats.participou : true,
-        equipeSofreuGol: stats.equipeSofreuGol || false,
+        equipeSofreuGol: stats.equipesofreugol || false,
     };
 
     if (!s.participou) return 0;
