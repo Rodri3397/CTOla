@@ -16,6 +16,7 @@ export const useStore = create((set, get) => ({
     myFollowedLeaguesDetails: [],
     draftSquad: JSON.parse(localStorage.getItem('ctola_draft_squad') || '{}'),
     draftCaptainId: localStorage.getItem('ctola_draft_captain') || null,
+    leagueMembers: [], // Members of the currently active league for management
     feed: [],
     loading: false,
     error: null,
@@ -165,6 +166,50 @@ export const useStore = create((set, get) => ({
             return { data, error: null };
         } catch (err) {
             set({ error: err.message, loading: false });
+            return { error: err.message };
+        }
+    },
+
+    fetchLeagueMembers: async (leagueId) => {
+        if (!leagueId) return;
+        set({ loading: true });
+        try {
+            const { data, error } = await supabase
+                .from('league_members')
+                .select(`
+                    *,
+                    profiles (
+                        name,
+                        avatar_url
+                    )
+                `)
+                .eq('league_id', leagueId);
+
+            if (error) throw error;
+            set({ leagueMembers: data || [], loading: false });
+        } catch (err) {
+            console.error("Fetch members error:", err);
+            set({ loading: false });
+        }
+    },
+
+    updateMemberRole: async (leagueId, userId, newRole) => {
+        set({ loading: true });
+        try {
+            const { error } = await supabase
+                .from('league_members')
+                .update({ role: newRole })
+                .eq('league_id', leagueId)
+                .eq('user_id', userId);
+
+            if (error) throw error;
+            
+            // Refresh local state
+            await get().fetchLeagueMembers(leagueId);
+            return { error: null };
+        } catch (err) {
+            console.error("Update role error:", err);
+            set({ loading: false });
             return { error: err.message };
         }
     },

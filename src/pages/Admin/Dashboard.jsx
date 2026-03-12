@@ -9,7 +9,8 @@ export default function AdminDashboard() {
         addTeam, addAthlete, deleteTeam, deleteAthlete,
         teams, fetchTeams, athletes, fetchAthletes, loading, error,
         createLeague, myLeagues, fetchMyLeagues, currentLeagueId, setCurrentLeague,
-        updateRoundStatus, finishRound, startNextRound, activeRoundId, rounds, fetchRounds, supabase, user
+        updateRoundStatus, finishRound, startNextRound, activeRoundId, rounds, fetchRounds, supabase, user,
+        fetchLeagueMembers, updateMemberRole, leagueMembers
     } = useStore();
 
     const activeRound = rounds.find(r => r.id === activeRoundId);
@@ -46,15 +47,17 @@ export default function AdminDashboard() {
             fetchTeams();
             fetchAthletes();
             fetchRounds();
+            fetchLeagueMembers(currentLeagueId);
         }
-    }, [fetchMyLeagues, fetchTeams, fetchAthletes, fetchRounds, currentLeagueId]);
+    }, [fetchMyLeagues, fetchTeams, fetchAthletes, fetchRounds, fetchLeagueMembers, currentLeagueId]);
 
     const handleCreateLeague = async () => {
         if (!newLeagueName) return;
-        const { error } = await createLeague(newLeagueName);
+        const { error } = await createLeague(newLeagueName, isPublic);
         if (!error) {
             setNewLeagueName('');
             setShowCreateLeague(false);
+            setIsPublic(true);
         }
     };
 
@@ -190,6 +193,73 @@ export default function AdminDashboard() {
 
     const currentLeague = myLeagues.find(l => l.id === currentLeagueId);
 
+    if (showCreateLeague) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="w-full max-w-sm glass-dark p-10 rounded-[3rem] border border-white/10 flex flex-col gap-8 shadow-2xl"
+                >
+                    <div className="text-center">
+                        <h3 className="text-xl font-black italic uppercase text-white tracking-tighter">Nova Competição</h3>
+                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2">Personalize sua liga agora</p>
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[7px] font-black uppercase text-gray-400 tracking-widest px-2">Nome da Liga</span>
+                            <input
+                                type="text"
+                                value={newLeagueName}
+                                onChange={(e) => setNewLeagueName(e.target.value)}
+                                placeholder="EX: COPA DOS CAMPEÕES"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-neon transition-all"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[7px] font-black uppercase text-gray-400 tracking-widest px-2">Privacidade</span>
+                            <div className="flex p-1 bg-white/5 rounded-2xl border border-white/5 gap-1">
+                                <button
+                                    onClick={() => setIsPublic(true)}
+                                    className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${isPublic ? 'bg-neon text-black' : 'text-gray-500'}`}
+                                >
+                                    Pública
+                                </button>
+                                <button
+                                    onClick={() => setIsPublic(false)}
+                                    className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${!isPublic ? 'bg-red-500 text-white' : 'text-gray-500'}`}
+                                >
+                                    Privada
+                                </button>
+                            </div>
+                            <p className="text-[7px] text-gray-600 font-bold uppercase tracking-[0.05em] px-2 italic mt-1">
+                                {isPublic ? 'Ligas públicas aparecem na aba Explorar para todos.' : 'Ligas privadas só podem ser acessadas com o Código de Convite.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                        <button
+                            onClick={() => setShowCreateLeague(false)}
+                            className="flex-1 py-5 rounded-2xl text-[9px] font-black uppercase text-gray-500 tracking-widest"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleCreateLeague}
+                            disabled={loading || !newLeagueName}
+                            className="flex-[2] bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                            {loading ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Criar Liga'}
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
     if (!isAuthorized) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">
@@ -322,7 +392,8 @@ export default function AdminDashboard() {
                             { id: 'overview', label: 'Geral', icon: LayoutDashboard },
                             { id: 'scouts', label: 'Pontuar', icon: Trophy },
                             { id: 'teams', label: `Times (${teams.length})`, icon: Shield },
-                            { id: 'athletes', label: `Atletas (${athletes.length})`, icon: Users }
+                            { id: 'athletes', label: `Atletas (${athletes.length})`, icon: Users },
+                            { id: 'members', label: 'Membros', icon: UserPlus }
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -615,7 +686,7 @@ export default function AdminDashboard() {
                                 )}
                             </div>
                         </motion.div>
-                    ) : (
+                    ) : activeTab === 'athletes' ? (
                         <motion.div key="athletes" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 flex flex-col gap-6">
                             <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex flex-col gap-6">
                                 <div className="flex flex-col gap-1">
@@ -698,6 +769,70 @@ export default function AdminDashboard() {
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <motion.div key="members" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 flex flex-col gap-6">
+                            <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex flex-col gap-2">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Membros da Liga</h3>
+                                <p className="text-[7px] font-bold text-gray-600 uppercase tracking-widest leading-none mt-1">Gerencie quem pode administrar a liga com você</p>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                {leagueMembers.map((member) => (
+                                    <div key={member.id} className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between group bg-white/[0.02]">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 uppercase font-black text-neon text-[10px]">
+                                                {member.profiles?.avatar_url ? (
+                                                    <img src={member.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    member.profiles?.name?.substring(0, 2) || '??'
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-xs font-bold text-white uppercase">{member.profiles?.name || 'Sem nome'}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${
+                                                        member.role === 'OWNER' ? 'bg-neon/20 text-neon' : 
+                                                        member.role === 'ADMIN' ? 'bg-blue-500/20 text-blue-400' : 
+                                                        'bg-gray-500/20 text-gray-500'
+                                                    }`}>
+                                                        {member.role === 'OWNER' ? 'Dono' : member.role === 'ADMIN' ? 'Admin' : 'Membro'}
+                                                    </span>
+                                                    {member.admin_code && member.role === 'ADMIN' && (
+                                                        <span className="text-[6px] font-black text-gray-600 uppercase">Code: {member.admin_code}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {currentLeague?.owner_id === user.id && member.user_id !== user.id && (
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                                {member.role === 'MEMBER' ? (
+                                                    <button 
+                                                        onClick={() => updateMemberRole(currentLeagueId, member.user_id, 'ADMIN')}
+                                                        className="px-3 py-2 bg-blue-500/10 text-blue-400 rounded-xl text-[7px] font-black uppercase hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20"
+                                                    >
+                                                        Tornar Admin
+                                                    </button>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => updateMemberRole(currentLeagueId, member.user_id, 'MEMBER')}
+                                                        className="px-3 py-2 bg-red-500/10 text-red-500 rounded-xl text-[7px] font-black uppercase hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                                                    >
+                                                        Remover Admin
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {leagueMembers.length === 0 && (
+                                    <div className="py-20 text-center animate-pulse">
+                                        <Loader2 className="animate-spin text-neon mx-auto mb-4" size={24} />
+                                        <span className="text-[10px] uppercase font-black text-gray-600 tracking-[0.3em]">Buscando Membros...</span>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     )}
