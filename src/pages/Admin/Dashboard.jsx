@@ -21,6 +21,7 @@ export default function AdminDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [showCreateLeague, setShowCreateLeague] = useState(false);
     const [newLeagueName, setNewLeagueName] = useState('');
+    const [isPublic, setIsPublic] = useState(true);
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [password, setPassword] = useState('');
     const [passError, setPassError] = useState(false);
