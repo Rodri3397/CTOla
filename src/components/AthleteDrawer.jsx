@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Filter, TrendingUp, Zap, UserPlus } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { useStore } from '../store/useStore';
 
 export default function AthleteDrawer({ isOpen, onClose, position, onSelect, currentAthleteId }) {
     const { athletes, teams, currentLeagueId } = useStore();
