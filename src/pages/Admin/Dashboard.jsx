@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, UserPlus, Loader2, Trophy, Shield, Users, Trash2, Search, Info, LayoutDashboard, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store/useStore';
+import { supabase } from '../../lib/supabase';
 import RoundSelector from '../../components/RoundSelector';
 
 export default function AdminDashboard() {
@@ -9,7 +10,7 @@ export default function AdminDashboard() {
         addTeam, addAthlete, deleteTeam, deleteAthlete, updateAthlete, updateTeam,
         teams, fetchTeams, athletes, fetchAthletes, loading, error, notification, setNotification,
         createLeague, myLeagues, fetchMyLeagues, currentLeagueId, setCurrentLeague,
-        updateRoundStatus, finishRound, startNextRound, activeRoundId, rounds, fetchRounds, supabase, user,
+        updateRoundStatus, finishRound, startNextRound, activeRoundId, rounds, fetchRounds, user,
         fetchLeagueMembers, updateMemberRole, leagueMembers
     } = useStore();
 
