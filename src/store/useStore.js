@@ -100,19 +100,24 @@ export const useStore = create((set, get) => ({
                 .from('league_members')
                 .select(`
                     role,
+                    team_name,
                     leagues (*)
                 `)
-                .eq('user_id', user.id)
-                .in('role', ['OWNER', 'ADMIN']);
+                .eq('user_id', user.id);
 
             if (mError) throw mError;
 
             const leagues = memberData?.map(m => ({
                 ...m.leagues,
-                user_role: m.role
+                user_role: m.role,
+                team_name: m.team_name // Crucial to sync this!
             })) || [];
 
-            set({ myLeagues: leagues, loading: false });
+            set({ 
+                myLeagues: leagues, 
+                myFollowedLeaguesDetails: leagues, // Sync for Home.jsx
+                loading: false 
+            });
 
             // Auto-select first league if none active
             const { currentLeagueId } = get();
@@ -199,7 +204,10 @@ export const useStore = create((set, get) => ({
     // Unified fetch for all league data to avoid multiple loading flickers
     fetchLeagueData: async () => {
         const { currentLeagueId } = get();
-        if (!currentLeagueId || currentLeagueId === 'null') return;
+        if (!currentLeagueId || currentLeagueId === 'null' || currentLeagueId === 'undefined') {
+            set({ loading: false });
+            return;
+        }
 
         set({ loading: true, error: null });
         try {
@@ -239,7 +247,7 @@ export const useStore = create((set, get) => ({
 
     updateTeamName: async (leagueId, teamName) => {
         const { user } = get();
-        if (!user) return { error: 'Not authenticated' };
+        if (!user || !leagueId || leagueId === 'null') return { error: 'Invalid context' };
 
         set({ loading: true, error: null });
         try {
@@ -544,7 +552,9 @@ export const useStore = create((set, get) => ({
                 .select('id, name, display_name, avatar_url')
                 .in('id', userIds);
 
-            if (pError) console.warn('Profiles fetch failed:', pError);
+            if (pError) {
+                console.warn('Profiles fetch failed, possibly due to relationship issues:', pError);
+            }
 
             // Merge
             const enrichedSquads = squads.map(s => ({
@@ -807,7 +817,7 @@ export const useStore = create((set, get) => ({
                         name,
                         pos
                     )
-                `)
+                `, { count: 'exact' })
                 .eq('league_id', currentLeagueId)
                 .order('created_at', { ascending: false });
 
@@ -850,6 +860,10 @@ export const useStore = create((set, get) => ({
 
     // Update round status (open/locked) with optimistic update
     updateRoundStatus: async (roundId, status) => {
+        if (!roundId || roundId === 'null') {
+            get().setNotification({ message: 'Selecione uma rodada válida', type: 'error' });
+            return { error: 'Invalid round ID' };
+        }
         const prevRounds = get().rounds;
         // Optimistically update
         set({

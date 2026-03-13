@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Pitch from '../components/Pitch';
 import { useStore } from '../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, User, Plus, Users } from 'lucide-react';
+import { X, ChevronRight, User, Plus, Users, Shield } from 'lucide-react';
 
 const MyTeam = () => {
     const {
