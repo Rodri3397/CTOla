@@ -69,7 +69,7 @@ export default function Home() {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 w-full max-w-xs mt-10">
+                <div className="grid grid-cols-2 gap-4 w-full max-xs mt-10">
                     <div className="flex flex-col items-center gap-2 opacity-40">
                         <Users size={20} />
                         <span className="text-[8px] font-bold uppercase tracking-widest">Multi-usuários</span>
@@ -121,6 +121,9 @@ export default function Home() {
                 });
             }
         });
+        return { round: roundTotal, total: cumulativeTotal };
+    };
+
     const { round: roundScore, total: totalScore } = getScores();
 
     const SkeletonItem = () => (
