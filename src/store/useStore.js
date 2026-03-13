@@ -12,6 +12,7 @@ export const useStore = create((set, get) => ({
     })(),
     leagues: [],
     myLeagues: [],
+    isValidUUID: (id) => id && id.length > 30 && id !== 'null' && id !== 'undefined',
     myFollowedLeagues: [],
     myFollowedLeaguesDetails: [],
     draftSquad: JSON.parse(localStorage.getItem('ctola_draft_squad') || '{}'),
@@ -573,8 +574,8 @@ export const useStore = create((set, get) => ({
 
     // Fetch all teams for current league
     fetchTeams: async () => {
-        const { currentLeagueId } = get();
-        if (!currentLeagueId || currentLeagueId === 'null') return;
+        const { currentLeagueId, isValidUUID } = get();
+        if (!isValidUUID(currentLeagueId)) return;
 
         set({ loading: true });
         try {
@@ -593,8 +594,8 @@ export const useStore = create((set, get) => ({
 
     // Fetch all rounds for current league
     fetchRounds: async () => {
-        const { currentLeagueId } = get();
-        if (!currentLeagueId || currentLeagueId === 'null') return;
+        const { currentLeagueId, isValidUUID } = get();
+        if (!isValidUUID(currentLeagueId)) return;
 
         try {
             const { data, error } = await supabase
@@ -660,8 +661,8 @@ export const useStore = create((set, get) => ({
 
     // Fetch all athletes for current league
     fetchAthletes: async () => {
-        const { currentLeagueId } = get();
-        if (!currentLeagueId || currentLeagueId === 'null') return;
+        const { currentLeagueId, isValidUUID } = get();
+        if (!isValidUUID(currentLeagueId)) return;
 
         set({ loading: true });
         try {

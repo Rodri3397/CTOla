@@ -19,6 +19,12 @@ const Ranking = () => {
     const loadLeaderboard = async () => {
         setLoading(true);
         try {
+            // Validate UUID
+            if (!currentLeagueId || currentLeagueId.length < 30) {
+                 setLoading(false);
+                 return;
+            }
+
             // Fetch all squads for this league
             const squads = await fetchLeaderboard();
 
@@ -71,6 +77,7 @@ const Ranking = () => {
             setLeaderboard(sorted);
         } catch (err) {
             console.error('Leaderboard error:', err);
+            setLeaderboard([]);
         } finally {
             setLoading(false);
         }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Pitch from '../components/Pitch';
 import { useStore } from '../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, User, Plus, Users, Shield } from 'lucide-react';
+import { X, ChevronRight, User, Plus, Users, Shield, Loader2 } from 'lucide-react';
 
 const MyTeam = () => {
     const {
@@ -141,10 +141,10 @@ const MyTeam = () => {
                 <div className="text-right flex flex-col items-end">
                     <span className="text-[7px] font-black uppercase text-gray-600 tracking-widest mb-1">Esquema 1-1-4</span>
                     <span className="text-neon font-black text-sm italic">
-                        {useStore.getState().myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'CTOlá FC'}
+                        {myFollowedLeaguesDetails.find(l => String(l.id) === String(currentLeagueId))?.name || 'LIGA NÃO SELECIONADA'}
                     </span>
                     <span className="text-[7px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
-                        Rodada {activeRound?.number || 1}
+                        {activeRound ? `Rodada ${activeRound.number}` : 'Aguardando Início'}
                     </span>
                 </div>
             </header>
