@@ -260,12 +260,8 @@ export const useStore = create((set, get) => ({
 
             if (error) throw error;
             
-            // Update local details without full refetch
-            set(state => ({
-                myFollowedLeaguesDetails: state.myFollowedLeaguesDetails.map(l => 
-                    l.id === leagueId ? { ...l, team_name: teamName } : l
-                )
-            }));
+            // Refetch to ensure all components have the latest data
+            await get().fetchMyFollowedLeagues();
             
             set({ loading: false });
             return { error: null };
@@ -286,9 +282,8 @@ export const useStore = create((set, get) => ({
                 .insert({ league_id: leagueId, user_id: user.id, role: 'MEMBER' });
 
             if (error) throw error;
-            set(state => ({
-                myFollowedLeagues: [...state.myFollowedLeagues, leagueId]
-            }));
+            
+            await get().fetchMyFollowedLeagues();
             return { error: null };
         } catch (err) {
             return { error: err.message };
@@ -340,9 +335,7 @@ export const useStore = create((set, get) => ({
                 throw jError;
             }
 
-            set(state => ({
-                myFollowedLeagues: [...state.myFollowedLeagues, league.id]
-            }));
+            await get().fetchMyFollowedLeagues();
 
             return { data: league, error: null };
         } catch (err) {
