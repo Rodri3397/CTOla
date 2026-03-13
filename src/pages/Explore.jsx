@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, Shield, Users, ArrowRight, Star, StarOff, Trophy, MapPin, Loader2 } from 'lucide-react';
+import { Search as SearchIcon, Shield, Users, ArrowRight, Star, StarOff, Trophy, MapPin, Loader2, Sparkles, Hash } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../store/useStore';
 
@@ -52,155 +52,145 @@ export default function Explore() {
     };
 
     return (
-        <div className="flex flex-col gap-8 animate-fade pb-24">
-            <header className="flex flex-col gap-2">
-                <h1 className="text-2xl font-black italic uppercase">Explorar Ligas</h1>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Encontre e siga as melhores competições</p>
+        <div className="flex flex-col gap-10 animate-fade-in pb-32">
+            <header className="flex flex-col gap-3 px-1">
+                <h1 className="text-4xl font-bebas italic text-white leading-none tracking-tighter">EXPLORAR <span className="text-volt">ARENAS</span></h1>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.25em]">Localize e conquiste as melhores competições</p>
             </header>
 
             <div className="flex flex-col gap-4">
                 <div className="relative group">
-                    <SearchIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-neon transition-colors" size={18} />
+                    <SearchIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-volt transition-colors" size={18} />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar ligas públicas..."
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 py-5 text-xs font-bold outline-none focus:border-neon/30 transition-all shadow-xl"
+                        placeholder="BUSCAR LIGAS PÚBLICAS..."
+                        className="w-full bg-deep-charcoal border border-white/5 rounded-[2rem] py-5 pl-16 pr-6 text-[10px] font-black text-white placeholder:text-gray-700 outline-none focus:border-volt/20 transition-all uppercase tracking-widest shadow-2xl"
                     />
                 </div>
 
                 <form onSubmit={handleJoinByCode} className="flex gap-2">
-                    <input
-                        type="text"
-                        value={joinCode}
-                        onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                        placeholder="Código de convite (Ex: XA21B)"
-                        className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-xs font-bold outline-none focus:border-neon/30 transition-all shadow-xl uppercase"
-                    />
+                    <div className="relative flex-1">
+                        <Hash className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
+                        <input
+                            type="text"
+                            value={joinCode}
+                            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                            placeholder="CÓDIGO DE CONVITE"
+                            className="w-full bg-deep-charcoal border border-white/5 rounded-[2rem] py-5 pl-16 pr-6 text-[10px] font-black text-white placeholder:text-gray-700 outline-none focus:border-volt/20 transition-all uppercase tracking-widest"
+                        />
+                    </div>
                     <button
                         type="submit"
                         disabled={joining}
-                        className="bg-neon text-black px-6 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-neon/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                        className="bg-volt text-black px-8 rounded-[1.8rem] font-black text-[10px] uppercase shadow-2xl shadow-volt/20 transition-all active:scale-95 disabled:opacity-30"
                     >
-                        {joining ? 'Entrando...' : 'Entrar'}
+                        {joining ? '...' : 'ENTRAR'}
                     </button>
                 </form>
             </div>
 
-            <section className="flex flex-col gap-4">
-                <h3 className="text-[10px] font-black uppercase text-gray-600 tracking-[0.3em] px-1">Ligas em Destaque</h3>
+            <section className="flex flex-col gap-6">
+                <div className="flex items-center gap-3 px-1">
+                    <Sparkles size={14} className="text-volt" />
+                    <h3 className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em]">Ligas em Destaque</h3>
+                </div>
 
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-5">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
-                            <Loader2 className="w-10 h-10 animate-spin text-neon" />
-                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Buscando Ligas...</span>
+                        <div className="flex flex-col items-center justify-center py-24 gap-6 opacity-30">
+                            <Loader2 className="w-12 h-12 animate-spin text-volt" />
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest italic">Escaneando Competições...</span>
                         </div>
                     ) : error ? (
-                        <div className="py-20 text-center flex flex-col items-center gap-6 glass rounded-[2.5rem] border border-red-500/20 bg-red-500/5">
-                            <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/20">
-                                <Shield className="text-red-500" size={32} />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-red-400 px-10">
-                                    Ops! Houve um erro ao carregar as ligas.
-                                </p>
-                                <p className="text-[8px] font-bold text-gray-500 uppercase tracking-wider px-10">
-                                    {error}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => fetchLeagues()}
-                                className="px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border-red-500/20 text-red-400"
-                            >
-                                Tentar Novamente
-                            </button>
-
-                            <p className="text-[7px] text-gray-600 font-bold uppercase tracking-widest px-10 mt-2">
-                                Certifique-se de que executou o script SQL no Supabase.
-                            </p>
+                        <div className="bento-card py-16 text-center flex flex-col items-center gap-6 border-red-500/20 bg-red-500/5">
+                            <Shield className="text-red-500" size={40} />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-red-400 px-10">Ops! Falha na conexão com a Arena.</p>
                         </div>
                     ) : filteredLeagues.map((league) => (
                         <motion.div
                             key={league.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="glass p-6 rounded-[2.5rem] border border-white/5 flex flex-col gap-4 relative overflow-hidden group"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bento-card group hover:border-volt/30 transition-all"
                         >
                             <div className="flex items-start justify-between">
-                                <div className="flex gap-4">
-                                    <div className="w-14 h-14 bg-[#1a1d23] rounded-2xl flex items-center justify-center border border-white/10 shadow-lg group-hover:scale-105 transition-transform">
-                                        <Trophy className="text-neon" size={24} />
+                                <div className="flex gap-5">
+                                    <div className="w-16 h-16 bg-black rounded-[1.8rem] flex items-center justify-center border border-white/5 shadow-2xl group-hover:rotate-6 transition-transform">
+                                        <Trophy className="text-volt" size={28} />
                                     </div>
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-sm font-black uppercase italic tracking-tight">{league.name}</h4>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <h4 className="text-lg font-bebas italic text-white tracking-tight uppercase leading-none">{league.name}</h4>
                                             {league.is_public && (
-                                                <div className="bg-neon/10 px-2 py-0.5 rounded-full border border-neon/20">
-                                                    <span className="text-[6px] text-neon font-black uppercase tracking-tighter">Pública</span>
+                                                <div className="bg-volt/10 px-3 py-1 rounded-full border border-volt/20">
+                                                    <span className="text-[7px] text-volt font-black uppercase tracking-widest">Pública</span>
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase">
-                                                <Users size={10} /> Ativa
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-1.5 text-[8px] font-black text-gray-600 uppercase tracking-widest">
+                                                <Users size={12} className="text-volt opacity-50" /> {league.member_count || 0} Membros
                                             </div>
-                                            <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase">
-                                                <MapPin size={10} /> Brasil
+                                            <div className="flex items-center gap-1.5 text-[8px] font-black text-gray-600 uppercase tracking-widest">
+                                                <MapPin size={12} className="text-volt opacity-50" /> BRASIL
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <button
+                                <motion.button
+                                    whileTap={{ scale: 0.8 }}
                                     onClick={() => toggleFollow(league.id)}
-                                    className={`p-3 rounded-2xl transition-all ${myFollowedLeagues.includes(league.id) ? 'bg-neon/10 text-neon' : 'bg-white/5 text-gray-600 hover:text-white'}`}
+                                    className={`p-4 rounded-2xl transition-all ${myFollowedLeagues.includes(league.id) ? 'bg-volt/10 text-volt border border-volt/20 shadow-glow shadow-volt/5' : 'bg-white/5 text-gray-700 hover:text-white'}`}
                                 >
-                                    {myFollowedLeagues.includes(league.id) ? <Star size={20} fill="currentColor" /> : <StarOff size={20} />}
-                                </button>
+                                    {myFollowedLeagues.includes(league.id) ? <Star size={18} fill="currentColor" /> : <StarOff size={18} />}
+                                </motion.button>
                             </div>
 
-                            <div className="flex items-center justify-between mt-2 pt-4 border-t border-white/5">
-                                <div className="flex -space-x-2">
+                            <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
+                                <div className="flex -space-x-3">
                                     {[1, 2, 3].map(i => (
-                                        <div key={i} className="w-6 h-6 rounded-full border-2 border-[#1a1d23] bg-gray-800" />
+                                        <div key={i} className="w-8 h-8 rounded-full border-[3px] border-deep-charcoal bg-white/5" />
                                     ))}
-                                    <div className="text-[8px] font-bold text-gray-600 flex items-center ml-4 uppercase tracking-widest">
-                                        {myFollowedLeagues.includes(league.id) ? 'Você segue' : 'Participar'}
+                                    <div className="text-[8px] font-black text-gray-700 flex items-center ml-5 uppercase tracking-widest italic group-hover:text-white transition-colors">
+                                        Explorar Detalhes
                                     </div>
                                 </div>
                                 <button
                                     onClick={() => handleViewLeague(league.id)}
-                                    className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-neon hover:gap-3 transition-all"
+                                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-volt group-hover:text-black transition-all"
                                 >
-                                    Ver Liga <ArrowRight size={10} />
+                                    <ArrowRight size={14} />
                                 </button>
                             </div>
                         </motion.div>
                     ))}
 
                     {!loading && !error && filteredLeagues.length === 0 && (
-                        <div className="py-20 text-center flex flex-col items-center gap-4 opacity-40">
-                            <Shield size={48} />
-                            <p className="text-[10px] font-black uppercase tracking-widest">Nenhuma liga encontrada</p>
+                        <div className="py-24 text-center flex flex-col items-center gap-8 opacity-20">
+                            <Shield size={64} />
+                            <p className="text-[10px] font-black uppercase tracking-widest">Nenhuma arena encontrada</p>
                         </div>
                     )}
                 </div>
             </section>
 
-            <button
+            <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => navigate('/admin/dashboard')}
-                className="w-full py-8 glass rounded-[2.5rem] border-dashed border-white/10 flex flex-col items-center gap-4 group hover:border-neon/30 transition-all mt-4"
+                className="w-full py-10 bento-card border-dashed border-white/10 flex flex-col items-center gap-6 group hover:border-volt/30 shadow-2xl"
             >
-                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all">
-                    <Shield className="text-gray-500 group-hover:text-neon" size={24} />
+                <div className="w-16 h-16 bg-volt/10 rounded-[2rem] flex items-center justify-center group-hover:rotate-[15deg] transition-all border border-volt/20 shadow-glow shadow-volt/5">
+                    <Shield className="text-volt" size={32} />
                 </div>
-                <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-widest">Quer criar sua própria liga?</h4>
-                    <p className="text-[8px] text-gray-600 font-bold uppercase mt-1">Torne-se um administrador oficial</p>
+                <div className="text-center">
+                    <h4 className="text-sm font-bebas italic text-white tracking-[0.2em] uppercase">FUNDAR MINHA PRÓPRIA ARENA</h4>
+                    <p className="text-[8px] text-gray-600 font-bold uppercase tracking-[0.3em] mt-2">Torne-se um administrador oficial</p>
                 </div>
-            </button>
+            </motion.button>
         </div>
     );
 }

@@ -18,7 +18,7 @@ import Ranking from './pages/Ranking';
 import LeagueDetail from './pages/LeagueDetail';
 
 // Components
-import Navbar from './components/layout/Navbar';
+import BottomNav from './components/layout/BottomNav';
 
 function App() {
     const navigate = useNavigate();
@@ -48,7 +48,7 @@ function App() {
     const profileLoading = user && !profile;
 
     return (
-        <div className="min-h-screen bg-[#0f1115] max-w-md mx-auto relative overflow-x-hidden text-white flex flex-col font-outfit">
+        <div className="min-h-screen bg-pure-black max-w-md mx-auto relative overflow-x-hidden text-white flex flex-col font-inter">
             <div className="flex-1 pb-32 pt-6 px-5">
                 <Routes>
                     <Route path="/" element={<Home />} />
@@ -66,7 +66,7 @@ function App() {
                     {/* Admin/League Owner Routes */}
                     <Route
                         path="/admin/scouting"
-                        element={profileLoading ? <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-neon" /></div> : (isAdmin ? <Scouter /> : <Navigate to="/" />)}
+                        element={profileLoading ? <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-volt" /></div> : (isAdmin ? <Scouter /> : <Navigate to="/" />)}
                     />
                     <Route
                         path="/admin"
@@ -79,7 +79,7 @@ function App() {
                 </Routes>
             </div>
 
-            <Navbar />
+            <BottomNav />
         </div>
     );
 }

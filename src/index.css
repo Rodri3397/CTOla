@@ -3,15 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --font-main: 'Outfit', sans-serif;
-  --neon: #00f5ff;
+  --pure-black: #000000;
+  --deep-charcoal: #0D0D0D;
+  --volt-green: #DFFF00;
+  --electric-crimson: #FF003C;
+  --inter: 'Inter', sans-serif;
+  --bebas: 'Bebas Neue', cursive;
+  --oswald: 'Oswald', sans-serif;
 }
 
 @layer base {
   body {
-    background-color: #0f1115;
+    background-color: var(--pure-black);
     color: #ffffff;
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--inter);
     overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: contain;
@@ -22,58 +27,93 @@
     height: 100%;
   }
 
-  h1,
-  h2,
-  h3 {
-    font-family: 'Outfit', sans-serif;
+  h1, h2, h3 {
+    font-family: var(--bebas);
+    letter-spacing: -0.02em;
   }
 }
 
 @layer components {
-
-  /* Aligned with Preview Glass */
-  .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  /* UI/UX Premium Utils */
+  .glass-premium {
+    background: rgba(13, 13, 13, 0.7);
+    backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .neo-shadow {
-    box-shadow: 0 0 15px rgba(0, 245, 255, 0.2);
+  .bento-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .tab-btn {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  .bento-card {
+    background: var(--deep-charcoal);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 28px;
+    padding: 24px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .bento-card:active {
+    transform: scale(0.96);
+    border-color: var(--volt-green);
+  }
+
+  .neo-glow-green {
+    box-shadow: 0 0 20px rgba(223, 255, 0, 0.1);
+  }
+
+  /* Colors & Typography */
+  .text-volt { color: var(--volt-green); }
+  .bg-volt { background-color: var(--volt-green); }
+  .border-volt { border-color: var(--volt-green); }
+  
+  .font-bebas { font-family: var(--bebas); }
+  .font-oswald { font-family: var(--oswald); }
+  .font-inter { font-family: var(--inter); }
+
+  /* Premium Skeleton Loading */
+  .skeleton {
+    background: linear-gradient(90deg, #121212 25%, #1a1a1a 50%, #121212 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite linear;
   }
 
   /* Custom Animations */
-  .animate-fade {
-    animation: fadeIn 0.4s ease-out forwards;
+  .animate-fade-in {
+    animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar Premium */
 ::-webkit-scrollbar {
   width: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--pure-black);
 }
 
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

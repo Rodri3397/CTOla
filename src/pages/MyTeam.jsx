@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Pitch from '../components/Pitch';
 import { useStore } from '../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, User, Plus, Users, Shield, Loader2 } from 'lucide-react';
+import { Users, Shield, Loader2 } from 'lucide-react';
+import Pitch from '../components/Pitch';
+import AthleteDrawer from '../components/AthleteDrawer';
 
 const MyTeam = () => {
     const {
-        athletes, teams, fetchAthletes, fetchTeams, currentLeagueId,
+        athletes, currentLeagueId,
         saveUserSquad, fetchUserSquad, activeRoundId, rounds,
         draftSquad, draftCaptainId, setDraftSquad, setDraftCaptain,
         myFollowedLeaguesDetails, updateTeamName
@@ -15,17 +16,16 @@ const MyTeam = () => {
     const navigate = useNavigate();
 
     const [isSaving, setIsSaving] = useState(false);
-    const [modalData, setModalData] = useState({ isOpen: false, slot: null, pos: null, step: 'teams', selectedTeamId: null });
+    const [drawer, setDrawer] = useState({ isOpen: false, slot: null, pos: null });
     const [tempTeamName, setTempTeamName] = useState('');
     const [isNamingTeam, setIsNamingTeam] = useState(false);
 
     const activeRound = rounds.find(r => r.id === activeRoundId);
     const isMarketOpen = activeRound?.status === 'open' || !activeRound;
 
-    // Map athlete IDs in draftSquad to objects for rendering
     const squadObjects = {};
     Object.entries(draftSquad).forEach(([slot, id]) => {
-        squadObjects[slot] = athletes.find(a => a.id === id) || null;
+        squadObjects[slot] = athletes.find(a => String(a.id) === String(id)) || null;
     });
 
     const currentLeagueMember = myFollowedLeaguesDetails.find(l => l.id === currentLeagueId);
@@ -41,110 +41,72 @@ const MyTeam = () => {
     const loadDbSquad = async () => {
         const dbSquad = await fetchUserSquad();
         if (dbSquad) {
-            // Priority: DB squad if it exists
             setDraftSquad(dbSquad.squad_data || {});
             setDraftCaptain(dbSquad.captain_id);
         }
-        // If no DB squad, draftSquad in store already has localStorage fallback
     };
 
     const handleSaveSquad = async () => {
         if (!isMarketOpen) return;
         setIsSaving(true);
-
         const { error } = await saveUserSquad(draftSquad, draftCaptainId);
         if (!error) {
-            alert('Escalação salva com sucesso!');
-        } else {
-            alert('Erro ao salvar: ' + error);
+            alert('Escalação salva!');
         }
         setIsSaving(false);
     };
 
-
-    const handleRemovePlayer = (slot) => {
-        if (!isMarketOpen) return;
-        const newDraft = { ...draftSquad };
-        delete newDraft[slot];
-        setDraftSquad(newDraft);
-        if (draftCaptainId === draftSquad[slot]) setDraftCaptain(null);
-    };
-
     const handleSelectSlot = (slot, pos) => {
-        if (draftSquad[slot]) {
-            handleRemovePlayer(slot);
-        } else {
-            setModalData({ isOpen: true, slot, pos, step: 'teams', selectedTeamId: null });
-        }
-    };
-
-    const handleSelectTeam = (teamId) => {
-        setModalData(prev => ({ ...prev, step: 'athletes', selectedTeamId: teamId }));
+        if (!isMarketOpen) return;
+        setDrawer({ isOpen: true, slot, pos });
     };
 
     const handleSelectAthlete = (athlete) => {
-        const newDraft = { ...draftSquad, [modalData.slot]: athlete.id };
+        const newDraft = { ...draftSquad, [drawer.slot]: athlete.id };
         setDraftSquad(newDraft);
-
-        // Auto-set captain if it's the captain slot (line3)
-        if (modalData.slot === 'line3') {
+        if (drawer.slot === 'line3' || !draftCaptainId) {
             setDraftCaptain(athlete.id);
         }
-
-        setModalData({ isOpen: false, slot: null, pos: null, step: 'teams', selectedTeamId: null });
     };
-
-    const handleSetCaptain = (slot) => {
-        // Only line3 is captain
-    };
-
-    // Filter athletes for the second step
-    const filteredAthletes = athletes.filter(a => {
-        const samePos = a.pos === modalData.pos;
-        const fromTeam = a.team_id === modalData.selectedTeamId;
-        const alreadyInSquad = Object.values(draftSquad).some(id => id === a.id);
-        return samePos && fromTeam && !alreadyInSquad;
-    });
 
     if (!currentLeagueId) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 animate-fade">
-                <div className="w-20 h-20 bg-neon/10 rounded-full flex items-center justify-center mb-6">
-                    <Users className="text-neon opacity-50" size={32} />
+            <div className="flex flex-col items-center justify-center py-20 animate-fade-in px-8">
+                <div className="w-24 h-24 bg-volt/10 rounded-[2.5rem] flex items-center justify-center mb-8 border border-volt/20">
+                    <Users className="text-volt opacity-50" size={40} />
                 </div>
-                <h2 className="text-lg font-black uppercase italic">Escalação Inativa</h2>
-                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2 px-10 text-center">
-                    Selecione uma liga no menu Explorar para começar a escalar seu time de craques.
+                <h2 className="text-2xl font-bebas text-white uppercase tracking-tight">Escalação Inativa</h2>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-3 text-center leading-loose">
+                    Selecione uma liga no início para começar a montar seu esquadrão de futsal.
                 </p>
                 <button
-                    onClick={() => navigate('/explorar')}
-                    className="mt-8 px-8 py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase shadow-xl hover:scale-105 transition-all"
+                    onClick={() => navigate('/')}
+                    className="mt-10 px-10 py-5 bg-volt text-black rounded-2xl font-black text-[10px] uppercase shadow-2xl hover:scale-105 transition-all"
                 >
-                    Explorar Ligas
+                    Voltar para Início
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col gap-6 animate-fade pb-24">
-            <header className="flex justify-between items-start px-1">
+        <div className="flex flex-col gap-8 animate-fade-in pb-32">
+            <header className="flex justify-between items-end px-1">
                 <div className="flex flex-col">
-                    <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none mt-1">Meu Time</h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        <div className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                        <span className={`text-[8px] font-black uppercase tracking-widest ${isMarketOpen ? 'text-green-500' : 'text-red-500'}`}>
-                            Mercado {isMarketOpen ? 'Aberto' : 'Fechado'}
+                    <h1 className="text-4xl font-bebas italic text-white leading-none tracking-tighter">MEU <span className="text-volt">TIME</span></h1>
+                    <div className="flex items-center gap-2 mt-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-volt animate-pulse' : 'bg-electric-crimson'}`}></div>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${isMarketOpen ? 'text-volt' : 'text-electric-crimson'}`}>
+                            MERCADO {isMarketOpen ? 'ABERTO' : 'FECHADO'}
                         </span>
                     </div>
                 </div>
-                <div className="text-right flex flex-col items-end">
-                    <span className="text-[7px] font-black uppercase text-gray-600 tracking-widest mb-1">Esquema 1-1-4</span>
-                    <span className="text-neon font-black text-sm italic">
-                        {myFollowedLeaguesDetails.find(l => String(l.id) === String(currentLeagueId))?.name || 'LIGA NÃO SELECIONADA'}
+                <div className="text-right flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-bebas text-white uppercase tracking-widest">
+                        {myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name}
                     </span>
-                    <span className="text-[7px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
-                        {activeRound ? `Rodada ${activeRound.number}` : 'Aguardando Início'}
+                    <span className="text-[8px] font-bold text-gray-600 uppercase tracking-widest">
+                        {activeRound ? `Rodada #${activeRound.number}` : 'Pre-Season'}
                     </span>
                 </div>
             </header>
@@ -152,116 +114,57 @@ const MyTeam = () => {
             <Pitch
                 squad={squadObjects}
                 onSelectSlot={handleSelectSlot}
-                onSetCaptain={handleSetCaptain}
                 captainId={draftCaptainId}
             />
 
-            <div className="glass p-6 rounded-[2.5rem] flex items-center justify-between border-white/5 bg-white/5 mt-2">
-                <span className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Valor do Elenco</span>
-                <span className="text-lg font-black text-neon">C$ {Object.values(squadObjects).reduce((acc, curr) => acc + (curr?.price || 0), 0).toFixed(2)}</span>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="bento-card flex flex-col gap-1 py-4">
+                    <span className="text-[8px] font-black uppercase text-gray-500 tracking-widest leading-none">Valor Total</span>
+                    <span className="text-xl font-bebas text-white italic">
+                        C$ {Object.values(squadObjects).reduce((acc, curr) => acc + (curr?.price || 0), 0).toFixed(1)}
+                    </span>
+                </div>
+                <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleSaveSquad}
+                    disabled={!isMarketOpen || isSaving}
+                    className={`rounded-[2rem] border font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center ${
+                        !isMarketOpen ? 'bg-deep-charcoal text-gray-600 border-white/5' : 'bg-volt text-black shadow-2xl shadow-volt/20 border-volt'
+                    }`}
+                >
+                    {isSaving ? 'Salvando...' : 'Confirmar'}
+                </motion.button>
             </div>
 
-            <button
-                onClick={handleSaveSquad}
-                disabled={!isMarketOpen || isSaving}
-                className={`w-full py-6 rounded-[2rem] font-black text-xs uppercase shadow-2xl transition-all mt-4 mb-10 ${!isMarketOpen
-                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                    : 'bg-neon text-black hover:scale-[1.02] active:scale-95'
-                    }`}
-            >
-                {isSaving ? 'Salvando...' : !isMarketOpen ? 'Mercado Fechado' : 'Confirmar Escalação'}
-            </button>
+            <AthleteDrawer 
+                isOpen={drawer.isOpen}
+                onClose={() => setDrawer({ ...drawer, isOpen: false })}
+                position={drawer.pos}
+                onSelect={handleSelectAthlete}
+                currentAthleteId={draftSquad[drawer.slot]}
+            />
 
-            {/* Selection Modal */}
-            <AnimatePresence>
-                {modalData.isOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="w-full max-w-sm glass-dark rounded-[3rem] border border-white/10 flex flex-col max-h-[70vh] overflow-hidden shadow-2xl shadow-neon/10"
-                        >
-                            <header className="p-6 border-b border-white/5 flex items-center justify-between">
-                                <div className="flex flex-col">
-                                    <h2 className="text-sm font-black italic uppercase">{modalData.step === 'teams' ? 'Escolha o Time' : 'Escolha o Craque'}</h2>
-                                    <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                                        Vaga: {modalData.slot === 'line3' ? 'Capitão' : modalData.slot === 'line6' ? 'Pivô' : 'Jogador de Linha'}
-                                    </span>
-                                </div>
-                                <button onClick={() => setModalData({ isOpen: false })} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
-                                    <X size={16} />
-                                </button>
-                            </header>
-
-                            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 no-scrollbar">
-                                {modalData.step === 'teams' ? (
-                                    teams.map((team, idx) => (
-                                        <button
-                                            key={team.id}
-                                            onClick={() => handleSelectTeam(team.id)}
-                                            className="w-full glass p-5 rounded-2xl flex items-center justify-between hover:border-neon/30 transition-all text-left group"
-                                        >
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{team.name}</span>
-                                            <ChevronRight size={16} className="text-gray-700 group-hover:text-neon" />
-                                        </button>
-                                    ))
-                                ) : (
-                                    <>
-                                        <button
-                                            onClick={() => setModalData(prev => ({ ...prev, step: 'teams' }))}
-                                            className="text-[8px] font-black uppercase text-neon mb-2 ml-2 hover:underline"
-                                        >
-                                            ← Voltar para Times
-                                        </button>
-                                        {filteredAthletes.length > 0 ? (
-                                            filteredAthletes.map(a => (
-                                                <button
-                                                    key={a.id}
-                                                    onClick={() => handleSelectAthlete(a)}
-                                                    className="w-full glass p-5 rounded-2xl flex items-center justify-between hover:border-neon/30 transition-all text-left group"
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                                                            <User size={20} className="text-gray-600" />
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[10px] font-black uppercase tracking-widest">{a.name}</span>
-                                                            <span className="text-[8px] font-bold text-neon uppercase">C$ {a.price.toFixed(2)}</span>
-                                                        </div>
-                                                    </div>
-                                                    <Plus size={16} className="text-gray-700 group-hover:text-neon" />
-                                                </button>
-                                            ))
-                                        ) : (
-                                            <div className="py-10 text-center text-gray-600 text-[10px] font-bold uppercase tracking-widest">
-                                                Nenhum {modalData.pos} disponível neste time.
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-            {/* Team Naming Modal */}
             <AnimatePresence>
                 {!hasTeamName && currentLeagueId && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/95 backdrop-blur-2xl"
+                    >
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="w-full max-w-sm glass-dark p-10 rounded-[3rem] border border-neon/20 flex flex-col gap-8 shadow-2xl shadow-neon/5"
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="w-full max-w-sm glass-premium p-10 rounded-[3.5rem] border border-white/10 flex flex-col gap-10 text-center"
                         >
                             <div className="flex flex-col items-center gap-6">
-                                <div className="w-20 h-20 bg-neon/10 rounded-[2.5rem] flex items-center justify-center border border-neon/20">
-                                    <Shield className="text-neon" size={36} />
+                                <div className="w-24 h-24 bg-volt/10 rounded-[3rem] flex items-center justify-center border border-volt/20 shadow-2xl shadow-volt/5">
+                                    <Shield className="text-volt" size={48} />
                                 </div>
-                                <div className="text-center">
-                                    <h2 className="text-xl font-black italic uppercase text-white tracking-tighter">Batize seu Time</h2>
-                                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2 leading-relaxed">
-                                        Como sua equipe será conhecida nesta liga?
+                                <div className="space-y-3">
+                                    <h2 className="text-3xl font-bebas text-white italic tracking-tight uppercase">Batize sua Equipe</h2>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
+                                        Escolha um nome de impacto para sua jornada.
                                     </p>
                                 </div>
                             </div>
@@ -270,9 +173,9 @@ const MyTeam = () => {
                                 <input
                                     type="text"
                                     value={tempTeamName}
-                                    onChange={(e) => setTempTeamName(e.target.value)}
-                                    placeholder="NOME DO TIME (EX: MITOS FC)"
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-center text-sm font-black uppercase tracking-widest outline-none focus:border-neon transition-all"
+                                    onChange={(e) => setTempTeamName(e.target.value.toUpperCase())}
+                                    placeholder="NOME DO TIME"
+                                    className="w-full bg-deep-charcoal border border-white/10 rounded-[1.5rem] py-5 px-6 text-center text-sm font-black text-volt placeholder:text-gray-700 outline-none focus:border-volt/40 transition-all uppercase"
                                 />
                                 <button
                                     onClick={async () => {
@@ -282,13 +185,13 @@ const MyTeam = () => {
                                         setIsNamingTeam(false);
                                     }}
                                     disabled={isNamingTeam || !tempTeamName.trim()}
-                                    className="w-full bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                                    className="w-full bg-volt text-black py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl active:scale-95 transition-all disabled:opacity-30"
                                 >
-                                    {isNamingTeam ? <Loader2 className="animate-spin mx-auto" size={16} /> : 'Começar a Escalar'}
+                                    {isNamingTeam ? <Loader2 className="animate-spin mx-auto" /> : 'Começar Agora'}
                                 </button>
                             </div>
                         </motion.div>
-                    </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </div>

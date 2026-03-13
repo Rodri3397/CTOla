@@ -857,81 +857,91 @@ export const useStore = create((set, get) => ({
         return { data, error };
     },
 
-    // --- GAME LOOP FUNCTIONS ---
+    // --- GAME LOOP FUNCTIONS (SENIOR VERSION) ---
 
-    // Update round status (open/locked) with optimistic update
+    // Dynamic Valuation Engine (Market Value Engine)
+    // Regra: Preço oscila com base na performance relativa às últimas 3 rodadas
+    runMarketValuation: async (leagueId, finishedRoundId) => {
+        set({ loading: true });
+        try {
+            // 1. Buscar média de pontos dos atletas nas últimas 3 rodadas
+            const { data: stats, error: sError } = await supabase
+                .from('match_stats')
+                .select('athlete_id, points')
+                .eq('league_id', leagueId)
+                .neq('round_id', finishedRoundId) // Ver anteriores
+                .order('created_at', { ascending: false });
+
+            if (sError) throw sError;
+
+            // 2. Buscar pontos da rodada atual
+            const { data: currentStats, error: csError } = await supabase
+                .from('match_stats')
+                .select('athlete_id, points')
+                .eq('round_id', finishedRoundId);
+
+            if (csError) throw csError;
+
+            // 3. Atualizar preços
+            for (const s of currentStats) {
+                const history = stats.filter(h => h.athlete_id === s.athlete_id).slice(0, 3);
+                const avg = history.length > 0 
+                    ? history.reduce((acc, curr) => acc + curr.points, 0) / history.length 
+                    : 3.0; // Média básica para novatos
+
+                const performance = s.points - avg;
+                let priceChange = performance * 0.1; // Fator de sensibilidade (10%)
+                
+                // Limitar variação brusca
+                priceChange = Math.max(-2, Math.min(2, priceChange));
+
+                const { data: athlete } = await supabase.from('athletes').select('price').eq('id', s.athlete_id).single();
+                if (athlete) {
+                    const newPrice = Math.max(1.0, parseFloat(athlete.price) + priceChange);
+                    await supabase.from('athletes').update({ price: parseFloat(newPrice.toFixed(2)) }).eq('id', s.athlete_id);
+                }
+            }
+
+            get().setNotification({ message: 'Mercado valorizado com sucesso!', type: 'success' });
+        } catch (err) {
+            console.error('Valuation Error:', err);
+            get().setNotification({ message: 'Erro na valorização', type: 'error' });
+        } finally {
+            set({ loading: false });
+        }
+    },
+
+    // Update round status (open/locked)
     updateRoundStatus: async (roundId, status) => {
-        if (!roundId || roundId === 'null') {
-            get().setNotification({ message: 'Selecione uma rodada válida', type: 'error' });
-            return { error: 'Invalid round ID' };
+        set({ loading: true });
+        const { error } = await supabase.from('rounds').update({ status }).eq('id', roundId);
+        if (!error) {
+            set(state => ({ rounds: state.rounds.map(r => r.id === roundId ? { ...r, status } : r) }));
+            get().setNotification({ message: `Mercado ${status === 'open' ? 'Aberto' : 'Fechado'}`, type: 'success' });
         }
-        const prevRounds = get().rounds;
-        // Optimistically update
-        set({
-            rounds: prevRounds.map(r => r.id === roundId ? { ...r, status } : r)
-        });
-
-        const { error } = await supabase
-            .from('rounds')
-            .update({ status })
-            .eq('id', roundId);
-
-        if (error) {
-            // Rollback on error
-            set({ rounds: prevRounds });
-            get().setNotification({ message: 'Erro ao atualizar mercado: ' + error.message, type: 'error' });
-        } else {
-            get().setNotification({ message: `Mercado ${status === 'open' ? 'Aberto' : 'Fechado'} com sucesso!`, type: 'success' });
-        }
+        set({ loading: false });
         return { error };
     },
 
-    // Finalize current round and mark as active
     finishRound: async (roundId) => {
         set({ loading: true });
-        const { error } = await supabase
-            .from('rounds')
-            .update({ status: 'finished' })
-            .eq('id', roundId);
-
+        const { currentLeagueId } = get();
+        const { error } = await supabase.from('rounds').update({ status: 'finished' }).eq('id', roundId);
         if (!error) {
-            const { rounds } = get();
-            set({
-                rounds: rounds.map(r => r.id === roundId ? { ...r, status: 'finished' } : r),
-                loading: false
-            });
-        } else {
-            set({ error: error.message, loading: false });
+            await get().runMarketValuation(currentLeagueId, roundId);
+            set(state => ({ rounds: state.rounds.map(r => r.id === roundId ? { ...r, status: 'finished' } : r) }));
         }
+        set({ loading: false });
         return { error };
     },
 
-    // Create a new round for the league
     startNextRound: async (leagueId) => {
         set({ loading: true });
         const { rounds } = get();
-        const leagueRounds = rounds.filter(r => r.league_id === leagueId);
-        const nextNumber = leagueRounds.length > 0 ? Math.max(...leagueRounds.map(r => r.number)) + 1 : 1;
-
-        const { data, error } = await supabase
-            .from('rounds')
-            .insert([{
-                league_id: leagueId,
-                number: nextNumber,
-                status: 'open'
-            }])
-            .select()
-            .single();
-
-        if (!error && data) {
-            set({
-                rounds: [...rounds, data],
-                activeRoundId: data.id,
-                loading: false
-            });
-        } else {
-            set({ error: error?.message || "Erro ao criar rodada", loading: false });
-        }
+        const nextNum = rounds.filter(r => r.league_id === leagueId).length + 1;
+        const { data, error } = await supabase.from('rounds').insert([{ league_id: leagueId, number: nextNum, status: 'open' }]).select().single();
+        if (!error && data) set({ rounds: [...rounds, data], activeRoundId: data.id });
+        set({ loading: false });
         return { data, error };
     }
 }));

@@ -1,89 +1,74 @@
 /**
- * Sistema de Pontuação Oficial do CTOla
+ * Sistema de Pontuação Oficial do CTOla (Refatorado - Senior Level)
  */
 
 export const POSITION_TYPES = {
     GOLEIRO: 'GOLEIRO',
     FIXO: 'FIXO',
-    LINE: 'LINE', // Jogadores 3, 4 e 5 (Ala, Pivô)
+    ALA: 'ALA',
+    PIVO: 'PIVO',
 };
 
-/**
- * Mapeia posições legíveis para os tipos internos de pontuação
- * @param {string} pos - ALA, PIVO, FIXO, GOLEIRO
- * @returns {string} internal position type
- */
-export function mapPositionToType(pos) {
-    const p = pos?.toUpperCase();
-    if (p === 'GOLEIRO') return POSITION_TYPES.GOLEIRO;
-    if (p === 'FIXO') return POSITION_TYPES.FIXO;
-    if (p === 'ALA' || p === 'PIVO' || p === 'PIVÔ') return POSITION_TYPES.LINE;
-    return POSITION_TYPES.LINE; // Default
-}
+// Pesos dos scouts (Game Theory Balanced)
+export const SCOUT_WEIGHTS = {
+    GOL: 5.0,
+    ASSISTENCIA: 3.0,
+    FINALIZACAO_DEFENDIDA: 1.2,
+    DESARME: 1.5,
+    GOLEIRO_LINHA_GOL: 8.0,
+    CARTAO_AMARELO: -2.0,
+    CARTAO_VERMELHO: -5.0,
+    GOL_CONTRA: -5.0,
+    FALTA_COMETIDA: -0.5,
+    GOL_SOFRIDO: -1.0, // Apenas para goleiros
+    SG_GOLEIRO: 5.0,
+    SG_FIXO: 3.0,
+    SG_LINHA: 1.0,
+};
 
 /**
  * Calcula a pontuação de um atleta baseado em suas estatísticas
  * @param {Object} stats - Estatísticas do atleta na rodada
- * @param {string} position - GOLEIRO, FIXO ou LINE
+ * @param {string} pos - GOLEIRO, FIXO, ALA, PIVO
  * @param {boolean} isCaptain - Se o jogador é o capitão do time fantasy
  * @returns {number} Pontuação final
  */
-export function calculateScore(stats, position, isCaptain = false) {
-    const type = mapPositionToType(position);
+export function calculateScore(stats, pos, isCaptain = false) {
+    if (!stats || stats.participou === false) return 0;
+
     let score = 0;
+    const position = pos?.toUpperCase();
 
-    // Garantir valores padrão (snake_case do DB)
-    const s = {
-        gols: stats.gols || 0,
-        assistencias: stats.assistencias || 0,
-        penaltisPerdidos: stats.penaltisperdidos || 0,
-        tirosLivresDefendidos: stats.tiroslivresdefendidos || 0,
-        penaltisDefendidos: stats.penaltisdefendidos || 0,
-        golsSofridos: stats.golssofridos || 0,
-        bonusMelhorGoleiro: stats.melhorgoleiro ? 5 : 0,
-        participou: stats.participou !== undefined ? stats.participou : true,
-        equipeSofreuGol: stats.equipesofreugol || false,
-    };
+    // Scouts Positivos
+    score += (stats.gols || 0) * SCOUT_WEIGHTS.GOL;
+    score += (stats.assistencias || 0) * SCOUT_WEIGHTS.ASSISTENCIA;
+    score += (stats.finalizacoes_defendidas || 0) * SCOUT_WEIGHTS.FINALIZACAO_DEFENDIDA;
+    score += (stats.desarmes || 0) * SCOUT_WEIGHTS.DESARME;
+    score += (stats.gols_goleiro_linha || 0) * SCOUT_WEIGHTS.GOLEIRO_LINHA_GOL;
 
-    if (!s.participou) return 0;
+    // Scouts Negativos
+    score += (stats.cartao_amarelo || 0) * SCOUT_WEIGHTS.CARTAO_AMARELO;
+    score += (stats.cartao_vermelho || 0) * SCOUT_WEIGHTS.CARTAO_VERMELHO;
+    score += (stats.gol_contra || 0) * SCOUT_WEIGHTS.GOL_CONTRA;
+    score += (stats.faltas_cometidas || 0) * SCOUT_WEIGHTS.FALTA_COMETIDA;
 
-    const SG = !s.equipeSofreuGol;
-
-    switch (type) {
-        case POSITION_TYPES.GOLEIRO:
-            // Fórmula: 3 + SG(5) + (3 × TL) + (5 × P) − GS + BMG
-            score = 3;
-            if (SG) score += 5;
-            score += (3 * s.tirosLivresDefendidos);
-            score += (5 * s.penaltisDefendidos);
-            score -= s.golsSofridos;
-            score += s.bonusMelhorGoleiro;
-            break;
-
-        case POSITION_TYPES.FIXO:
-            // Fórmula: SG(5) + (5 × G) + (3 × A) − (3 × PP)
-            if (SG) score += 5;
-            score += (5 * s.gols);
-            score += (3 * s.assistencias);
-            score -= (3 * s.penaltisPerdidos);
-            break;
-
-        case POSITION_TYPES.LINE:
-            // Fórmula: SG(2) + (5 × G) + (3 × A) − (3 × PP)
-            if (SG) score += 2;
-            score += (5 * s.gols);
-            score += (3 * s.assistencias);
-            score -= (3 * s.penaltisPerdidos);
-            break;
-
-        default:
-            break;
+    // SG (Saldo de Gols)
+    const sofreuGol = stats.equipe_sofreu_gol || stats.gols_sofridos > 0;
+    if (!sofreuGol) {
+        if (position === 'GOLEIRO') score += SCOUT_WEIGHTS.SG_GOLEIRO;
+        else if (position === 'FIXO') score += SCOUT_WEIGHTS.SG_FIXO;
+        else score += SCOUT_WEIGHTS.SG_LINHA;
     }
 
-    // Regra do Capitão: 2x a pontuação final (Qualquer posição pode ser capitão)
+    // Penalidade para Goleiro (Gols Sofridos)
+    if (position === 'GOLEIRO') {
+        score += (stats.gols_sofridos || 0) * SCOUT_WEIGHTS.GOL_SOFRIDO;
+    }
+
+    // Regra do Capitão: 2x a pontuação final
     if (isCaptain) {
         score *= 2;
     }
 
-    return score;
+    return parseFloat(score.toFixed(1));
 }

@@ -1,13 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Search, ShoppingCart, Loader2, Filter, TrendingUp, TrendingDown, LayoutGrid, List } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../store/useStore';
 
+// Simple SVG Sparkline Component
+const Sparkline = ({ data = [0,0,0], color = '#DFFF00' }) => {
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const points = data.map((v, i) => `${(i * 30)} , ${20 - ((v - min) / range) * 20}`).join(' ');
+
+    return (
+        <svg width="90" height="25" className="opacity-60 overflow-visible">
+            <polyline
+                fill="none"
+                stroke={color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={points}
+                className="drop-shadow-[0_0_8px_rgba(223,255,0,0.4)]"
+            />
+        </svg>
+    );
+};
+
+const SkeletonCard = () => (
+    <div className="bento-card h-32 animate-pulse flex items-center justify-between px-6 opacity-30">
+        <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-[1.8rem] bg-white/10" />
+            <div className="flex flex-col gap-2">
+                <div className="w-24 h-3 bg-white/10 rounded-full" />
+                <div className="w-32 h-4 bg-white/10 rounded-full" />
+            </div>
+        </div>
+        <div className="w-16 h-10 bg-white/10 rounded-xl" />
+    </div>
+);
+
 export default function Market() {
-    const { athletes, loading, error, fetchAthletes, currentLeagueId, rounds, activeRoundId } = useStore();
+    const { athletes, teams, loading, currentLeagueId, rounds, activeRoundId, addToDraftSquad } = useStore();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
+    const [filterPos, setFilterPos] = useState('TODOS');
+    const [sortBy, setSortBy] = useState('price_desc');
 
     const activeRound = rounds.find(r => r.id === activeRoundId);
     const isMarketOpen = activeRound?.status === 'open' || !activeRound;
@@ -18,111 +55,167 @@ export default function Market() {
         }
     }, [currentLeagueId]);
 
-    const filteredAthletes = (athletes || []).filter(a =>
-        a.name.toLowerCase().includes(search.toLowerCase()) ||
-        a.pos.toLowerCase().includes(search.toLowerCase()) ||
-        (a.teams?.name || '').toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredAthletes = useMemo(() => {
+        return (athletes || [])
+            .filter(a => {
+                const matchesSearch = a.name.toLowerCase().includes(search.toLowerCase());
+                const matchesPos = filterPos === 'TODOS' || a.pos === filterPos;
+                return matchesSearch && matchesPos;
+            })
+            .sort((a, b) => {
+                if (sortBy === 'price_desc') return b.price - a.price;
+                if (sortBy === 'price_asc') return a.price - b.price;
+                return b.last_score - a.last_score;
+            });
+    }, [athletes, search, filterPos, sortBy]);
 
     if (!currentLeagueId) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 animate-fade">
-                <div className="w-20 h-20 bg-neon/10 rounded-full flex items-center justify-center mb-6">
-                    <ShoppingCart className="text-neon opacity-50" size={32} />
+            <div className="flex flex-col items-center justify-center py-20 px-8 text-center animate-fade-in">
+                <div className="w-28 h-28 bg-volt/5 rounded-[3rem] border border-volt/10 flex items-center justify-center mb-10 rotate-[15deg]">
+                    <ShoppingCart className="text-volt opacity-50" size={48} />
                 </div>
-                <h2 className="text-lg font-black uppercase italic">Mercado Bloqueado</h2>
-                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2 px-10 text-center">
-                    Você precisa selecionar uma liga no menu Explorar para ver os atletas disponíveis.
+                <h2 className="text-3xl font-bebas text-white uppercase italic tracking-tight">Arena Fechada</h2>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.25em] mt-4 max-w-[260px] leading-relaxed">
+                    Sua jornada começa em uma liga. Entre agora para escalar seus primeiros craques.
                 </p>
                 <button
-                    onClick={() => navigate('/explorar')}
-                    className="mt-8 px-8 py-4 bg-neon text-black rounded-2xl font-black text-[10px] uppercase shadow-xl hover:scale-105 transition-all"
+                    onClick={() => navigate('/')}
+                    className="mt-12 px-12 py-6 bg-volt text-black rounded-[2.5rem] font-black text-[10px] uppercase shadow-2xl hover:scale-105 active:scale-95 transition-all"
                 >
-                    Explorar Ligas
+                    Voltar para Início
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col gap-6 animate-fade pb-24">
-            <header className="flex justify-between items-end px-1">
-                <h1 className="text-2xl font-black italic uppercase tracking-tighter">Mercado</h1>
-                <div className="text-right flex flex-col items-end">
-                    <span className="text-neon font-black text-sm">C$ 85.00</span>
-                    {!isMarketOpen && (
-                        <span className="text-[7px] font-black uppercase text-red-500 tracking-widest mt-1">Mercado Fechado</span>
-                    )}
+        <div className="flex flex-col gap-8 pb-36 animate-fade-in">
+            <header className="px-1 flex flex-col gap-6">
+                <div className="flex justify-between items-end">
+                    <div className="flex flex-col">
+                        <h1 className="text-4xl font-bebas italic text-white leading-none tracking-tighter">MERCADO de <span className="text-volt">CRAQUES</span></h1>
+                        <div className="flex items-center gap-2 mt-2">
+                            <motion.div 
+                                animate={{ opacity: [0.3, 1, 0.3] }} 
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-volt' : 'bg-electric-crimson'}`}
+                            />
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${isMarketOpen ? 'text-volt' : 'text-electric-crimson'}`}>
+                                {isMarketOpen ? 'NEGOCIAÇÕES ABERTAS' : 'MERCADO FECHADO'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Glass Filter Bar */}
+                <div className="flex flex-col gap-4">
+                    <div className="relative group">
+                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-volt transition-colors" size={18} />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar goleiro, fixo, ala..."
+                            className="w-full bg-deep-charcoal border border-white/5 rounded-[2rem] py-5 pl-16 pr-6 text-[10px] font-black text-white placeholder:text-gray-700 outline-none focus:border-volt/20 transition-all uppercase tracking-widest"
+                        />
+                    </div>
+                    
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
+                        {['TODOS', 'GOLEIRO', 'FIXO', 'ALA', 'PIVO'].map(pos => (
+                            <button
+                                key={pos}
+                                onClick={() => setFilterPos(pos)}
+                                className={`px-6 py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap ${filterPos === pos ? 'bg-volt text-black shadow-xl shadow-volt/20' : 'bg-white/5 text-gray-500 border border-white/5 hover:border-white/10'}`}
+                            >
+                                {pos}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </header>
 
-            <div className="relative group">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-neon transition-colors" size={16} />
-                <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar craque..."
-                    className="w-full bg-[#1a1d23] border border-white/5 rounded-[2rem] py-5 pl-14 pr-6 text-xs font-bold text-white placeholder:text-gray-700 outline-none focus:border-neon/20 transition-all shadow-inner"
-                />
-            </div>
-
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
-                        <Loader2 className="w-10 h-10 animate-spin text-neon" />
-                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Consultando Mercado...</span>
-                    </div>
-                ) : error ? (
-                    <div className="py-20 text-center flex flex-col items-center gap-6 glass rounded-[2.5rem] border border-red-500/20 bg-red-500/5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-red-400">Erro no Mercado</p>
-                        <p className="text-[8px] font-bold text-gray-500 uppercase tracking-wider">{error}</p>
-                    </div>
+                    Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)
                 ) : filteredAthletes.length === 0 ? (
-                    <div className="py-20 text-center flex flex-col items-center gap-4 opacity-40">
-                        <ShoppingCart size={48} />
-                        <p className="text-[10px] font-black uppercase tracking-widest">Nenhum atleta nesta liga</p>
+                    <div className="py-24 text-center flex flex-col items-center gap-8 opacity-20">
+                        <ShoppingCart size={80} />
+                        <p className="text-[10px] font-black uppercase tracking-widest">Nenhum atleta disponível</p>
                     </div>
-                ) : filteredAthletes.map((athlete, idx) => (
-                    <motion.div
-                        key={athlete.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.03 }}
-                        className="glass p-5 rounded-[2rem] flex items-center justify-between group border-white/5 hover:border-neon/20 transition-all"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-[#1a1d23] flex items-center justify-center text-2xl border border-white/10 group-hover:scale-110 transition-transform">
-                                {athlete.photo || '⚽'}
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-xs font-black text-white leading-none">{athlete.name}</span>
-                                <div className="flex items-center gap-2 mt-1.5">
-                                    <span className="text-[8px] text-gray-600 font-black uppercase tracking-widest">{athlete.team || 'SEM TIME'} - <span className="text-gray-500">{athlete.pos}</span></span>
-                                </div>
-                            </div>
-                        </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                        {filteredAthletes.map((athlete, idx) => {
+                            // Valuation logic: (P_atual - Media_3) / 10
+                            // For UI display, we'll simulate a random history for the sparkline if not present
+                            const valProjection = ((athlete.price - (athlete.last_score || 0)) / 10).toFixed(1);
+                            const isValPositive = parseFloat(valProjection) >= 0;
 
-                        <div className="flex flex-col items-end gap-2">
-                            <span className="text-[10px] font-black text-neon italic leading-none">C$ {athlete.price}</span>
-                            <button
-                                onClick={() => {
-                                    if (isMarketOpen) {
-                                        useStore.getState().addToDraftSquad(athlete);
-                                        navigate('/meu-time');
-                                    }
-                                }}
-                                disabled={!isMarketOpen}
-                                className={`border text-[7px] font-black uppercase px-3 py-1.5 rounded-lg transition-all tracking-widest ${isMarketOpen
-                                    ? 'bg-white/5 border-white/10 group-hover:bg-neon group-hover:text-black'
-                                    : 'bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed'
-                                    }`}
-                            >
-                                {isMarketOpen ? 'Comprar' : 'Fechado'}
-                            </button>
-                        </div>
-                    </motion.div>
-                ))}
+                            return (
+                                <motion.div
+                                    key={athlete.id}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    className="bento-card group active:scale-[0.98] transition-all"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-5">
+                                            <div className="relative">
+                                                <div className="w-16 h-16 rounded-[1.5rem] bg-black border border-white/5 flex items-center justify-center text-3xl shadow-inner overflow-hidden">
+                                                    <span className="blur-sm absolute inset-0 opacity-20 bg-volt/30" />
+                                                    <span className="relative z-10">{athlete.photo || '👤'}</span>
+                                                </div>
+                                                <div className="absolute -top-1 -left-1 px-2 py-0.5 bg-black rounded-lg border border-white/10 text-[7px] font-black italic text-volt uppercase leading-none">
+                                                    {athlete.pos}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[7px] font-bold text-gray-600 uppercase tracking-widest">
+                                                    {teams.find(t => t.id === athlete.team_id)?.name || 'AVULSO'}
+                                                </span>
+                                                <h3 className="text-sm font-black text-white italic uppercase tracking-tighter leading-none">{athlete.name}</h3>
+                                                
+                                                {/* Sparkline & Trend */}
+                                                <div className="mt-2 flex items-center gap-3">
+                                                    <Sparkline data={[2, 5, athlete.last_score || 3]} color={isValPositive ? '#DFFF00' : '#FF003C'} />
+                                                    <div className={`flex items-center gap-1 ${isValPositive ? 'text-volt' : 'text-electric-crimson'}`}>
+                                                        {isValPositive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                                                        <span className="text-[9px] font-black">{valProjection}%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col items-end gap-3">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest mb-1">Custo</span>
+                                                <span className="text-xl font-bebas text-volt italic leading-none">C$ {athlete.price}</span>
+                                            </div>
+                                            
+                                            <motion.button
+                                                whileTap={{ scale: 0.9 }}
+                                                onClick={() => {
+                                                    if (isMarketOpen) {
+                                                        addToDraftSquad(athlete);
+                                                        navigate('/meu-time');
+                                                    }
+                                                }}
+                                                className={`px-6 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all ${isMarketOpen
+                                                    ? 'bg-volt text-black shadow-xl shadow-volt/10 group-hover:shadow-volt/30'
+                                                    : 'bg-black text-gray-700 border border-white/5 opacity-40 cursor-not-allowed'
+                                                }`}
+                                            >
+                                                CONTRATAR
+                                            </motion.button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );

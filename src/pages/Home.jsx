@@ -128,190 +128,157 @@ export default function Home() {
     const initials = profile?.name ? profile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
 
     return (
-        <div className="flex flex-col gap-6 animate-fade pb-24">
-            <header className="flex flex-col gap-4 px-1">
-                <div className="flex justify-between items-start">
+        <div className="flex flex-col gap-8 animate-fade-in pb-32">
+            {/* Header Premium */}
+            <header className="flex flex-col gap-6 px-1">
+                <div className="flex justify-between items-center">
                     <div className="flex flex-col">
-                        <h1 className="text-2xl font-black italic text-white flex gap-1 leading-none">
-                            CT <span className="text-neon">ola</span>
+                        <h1 className="text-4xl font-bebas italic text-white leading-none tracking-tight">
+                            CT<span className="text-volt">OLA</span>
                         </h1>
-                        <span className="text-[7px] font-black uppercase text-gray-600 tracking-[0.4em] ml-0.5 mt-1">Fantasy League</span>
-                        
-                        {/* Active League Name Display */}
-                        {currentLeagueId && (
-                            <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-neon/10 rounded-xl border border-neon/20 w-fit">
-                                <Trophy size={10} className="text-neon" />
-                                <span className="text-[9px] font-black text-neon uppercase tracking-widest leading-none">
-                                    {myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'Carregando...'}
-                                </span>
-                            </div>
-                        )}
+                        <span className="text-[9px] font-inter font-black uppercase text-gray-600 tracking-[0.4em] ml-0.5 mt-1">
+                            Futsal Fantasy League
+                        </span>
                     </div>
-                    <div
+                    <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => navigate('/perfil')}
-                        className="w-10 h-10 rounded-full bg-[#1e40af] border-2 border-white/20 flex items-center justify-center font-black text-white text-xs shadow-xl shadow-blue-900/40 overflow-hidden cursor-pointer hover:scale-105 transition-all"
+                        className="w-12 h-12 rounded-2xl bg-deep-charcoal border border-white/10 flex items-center justify-center font-black text-white text-xs shadow-2xl overflow-hidden cursor-pointer"
                     >
                         {profile?.avatar_url ? (
                             <img src={profile.avatar_url} className="w-full h-full object-cover" />
                         ) : (
-                            initials
+                            <User className="text-gray-500" size={20} />
                         )}
+                    </motion.div>
+                </div>
+
+                {/* Bento Grid Principal */}
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Card de Boas-vindas / Próximo Jogo */}
+                    <div className="col-span-2 bento-card flex flex-col justify-between min-h-[160px] bg-gradient-to-br from-deep-charcoal to-black relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Trophy size={80} className="text-volt" />
+                        </div>
+                        <div className="relative z-10">
+                            <span className="text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2 block">Liga Ativa</span>
+                            <h2 className="text-2xl font-bebas text-white leading-tight uppercase truncate max-w-[200px]">
+                                {myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'Nenhuma Liga'}
+                            </h2>
+                        </div>
+                        <div className="relative z-10 flex items-center justify-between mt-6">
+                            <RoundSelector />
+                            <motion.button 
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => navigate('/ranking')}
+                                className="w-10 h-10 rounded-xl bg-volt flex items-center justify-center text-black shadow-[0_5px_15px_rgba(223,255,0,0.3)]"
+                            >
+                                <ChevronRight size={20} />
+                            </motion.button>
+                        </div>
+                    </div>
+
+                    {/* Card de Pontos da Rodada */}
+                    <div className="bento-card flex flex-col gap-2 relative group overflow-hidden">
+                        <div className="absolute -right-4 -bottom-4 opacity-5 text-volt group-hover:scale-110 transition-transform">
+                            <Zap size={60} />
+                        </div>
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Rodada Atual</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-bebas text-volt">{roundScore.toFixed(1)}</span>
+                            <span className="text-[10px] font-bold text-gray-600 uppercase">PTS</span>
+                        </div>
+                        <div className="mt-2 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                            <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: '65%' }}
+                                className="h-full bg-volt"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Card de Patrimonio / Total */}
+                    <div className="bento-card flex flex-col gap-2 relative group overflow-hidden">
+                        <div className="absolute -right-4 -bottom-4 opacity-5 text-white group-hover:scale-110 transition-transform">
+                            <TrendingUp size={60} />
+                        </div>
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Saldo Total</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-bebas text-white">C$ {totalScore.toFixed(0)}</span>
+                        </div>
+                        <span className="text-[7px] font-bold text-green-500 uppercase tracking-tighter mt-1">+12.4% este mês</span>
                     </div>
                 </div>
 
-                <RoundSelector />
-
-                {/* Minhas Ligas Switcher */}
-                <div className="flex flex-col gap-3 mt-4">
+                {/* Minhas Ligas Horizontal */}
+                <div className="flex flex-col gap-4 mt-2">
                     <div className="flex items-center justify-between px-1">
-                        <h2 className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Minhas Ligas</h2>
-                        <button
-                            onClick={() => navigate('/explorar')}
-                            className="text-[8px] font-black text-neon uppercase tracking-widest hover:underline"
-                        >
-                            + Entrar em Outra
-                        </button>
+                        <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Suas Ligas</h2>
+                        <button onClick={() => navigate('/explorar')} className="text-[9px] font-black text-volt uppercase tracking-widest hover:brightness-125 transition-all">+ Ver Todas</button>
                     </div>
-                    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                    <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
                         {myFollowedLeaguesDetails.map((league) => (
-                            <button
+                            <motion.button
                                 key={league.id}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setCurrentLeague(league.id)}
-                                className={`flex-shrink-0 px-6 py-4 rounded-2xl border transition-all flex items-center gap-3 ${currentLeagueId === league.id
-                                    ? 'bg-neon/10 border-neon text-neon shadow-lg shadow-neon/5'
-                                    : 'bg-white/5 border-white/5 text-gray-400 opacity-60 hover:opacity-100'
+                                className={`flex-shrink-0 px-8 py-5 rounded-[2rem] border transition-all flex items-center gap-4 ${currentLeagueId === league.id
+                                    ? 'bg-volt text-black shadow-[0_10px_25px_rgba(223,255,0,0.2)] border-volt'
+                                    : 'bg-deep-charcoal border-white/5 text-gray-500 hover:text-white'
                                     }`}
                             >
-                                <div className={`w-2 h-2 rounded-full ${currentLeagueId === league.id ? 'bg-neon animate-pulse' : 'bg-gray-700'}`}></div>
-                                <span className="text-[10px] font-black uppercase tracking-widest">{league.name}</span>
-                            </button>
+                                <Shield size={16} />
+                                <span className="text-[11px] font-black uppercase tracking-widest">{league.name}</span>
+                            </motion.button>
                         ))}
                     </div>
-
-                    {/* Admin Access on Home */}
-                    {(() => {
-                        const activeLeague = myFollowedLeaguesDetails.find(l => l.id === currentLeagueId);
-                        const isLeagueAdmin = activeLeague?.role === 'OWNER' || activeLeague?.role === 'ADMIN';
-                        if (!activeLeague) return null;
-
-                        return (
-                            <motion.button
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                onClick={() => navigate('/admin/dashboard')}
-                                className={`mt-2 p-5 rounded-[2rem] border flex items-center justify-between group transition-all ${isLeagueAdmin ? 'bg-neon/10 border-neon/30 hover:bg-neon hover:text-black' : 'bg-white/5 border-white/10 opacity-60 hover:opacity-100'}`}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 rounded-2xl bg-neon/20 group-hover:bg-black/10">
-                                        {isLeagueAdmin ? <Zap size={18} className="text-neon group-hover:text-black" /> : <Shield size={18} className="text-gray-500 group-hover:text-neon" />}
-                                    </div>
-                                    <div className="flex flex-col items-start text-left">
-                                        <span className="text-[11px] font-black uppercase tracking-widest">
-                                            {isLeagueAdmin ? 'Painel de Gestão Direto' : 'Acessar Área Restrita'}
-                                        </span>
-                                        <span className="text-[8px] font-bold uppercase opacity-60">
-                                            {isLeagueAdmin ? 'Gerenciar liga atual agora' : 'Área de administração (Requer código)'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <ChevronRight size={18} className="opacity-40 group-hover:opacity-100" />
-                            </motion.button>
-                        );
-                    })()}
                 </div>
             </header>
 
-            <section className="flex flex-col gap-4">
-                <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest flex items-center gap-2">
-                        <Calendar size={12} className="text-gray-700" /> Histórico por Período
-                    </span>
-                    <div className="relative">
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value === 'ALL' ? 'ALL' : parseInt(e.target.value))}
-                            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black uppercase text-white outline-none focus:border-neon/30 appearance-none pr-8 cursor-pointer hover:bg-white/10 transition-all"
-                        >
-                            {months.map(m => (
-                                <option key={m.id} value={m.id} className="bg-[#1a1d23]">{m.name}</option>
-                            ))}
-                        </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                            <ChevronRight size={12} className="rotate-90" />
-                        </div>
+            {/* Feed Section (Premium List) */}
+            <section className="flex flex-col gap-6 px-1">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-[11px] font-black text-gray-500 uppercase tracking-[0.3em]">Resumo da Rodada</h2>
+                    <div className="px-3 py-1 bg-volt/10 rounded-full border border-volt/20">
+                        <span className="text-[8px] font-black uppercase text-volt animate-pulse tracking-widest">LIVE NOW</span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="glass p-6 rounded-[2.5rem] flex flex-col gap-1 border-white/5 shadow-inner relative overflow-hidden group">
-                        <div className="absolute -right-4 -top-4 w-16 h-16 bg-neon/10 blur-2xl rounded-full group-hover:bg-neon/20 transition-all"></div>
-                        <span className="text-[8px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-1">
-                            <Zap size={8} className="text-neon" /> Pontos Rodada
-                        </span>
-                        <div className="text-lg font-black text-neon">{roundScore.toFixed(2)}</div>
-                    </div>
-                    <div className="glass p-6 rounded-[2.5rem] flex flex-col gap-1 border-white/5 shadow-inner relative overflow-hidden group">
-                        <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/5 blur-2xl rounded-full group-hover:bg-white/10 transition-all"></div>
-                        <span className="text-[8px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-1">
-                            <TrendingUp size={8} className="text-green-500" /> Pontos Totais
-                        </span>
-                        <div className="text-lg font-black text-white">{totalScore.toFixed(2)}</div>
-                    </div>
-                </div>
-
-                <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => navigate('/ranking')}
-                    className="w-full glass py-5 rounded-[2rem] border border-neon/20 flex items-center justify-center gap-3 group bg-neon/5 mt-2"
-                >
-                    <Trophy className="text-neon group-hover:rotate-12 transition-transform" size={16} />
-                    <span className="text-[10px] font-black uppercase text-neon tracking-widest">Ver Classificação da Liga</span>
-                </motion.button>
-            </section>
-
-            <section className="flex flex-col gap-4">
-                <div className="flex items-center justify-between px-1">
-                    <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">Feed da Liga</h2>
-                    <div className="flex items-center gap-1.5 bg-neon/10 px-2 py-1 rounded-full text-neon">
-                        <Zap size={8} className="animate-pulse" />
-                        <span className="text-[8px] font-black uppercase">Resultados</span>
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-4">
                     <AnimatePresence mode="popLayout">
                         {feed.length > 0 ? (
                             feed.map((event, idx) => (
                                 <motion.div
                                     key={event.id}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between group hover:border-neon/10 transition-all"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    className="bg-deep-charcoal p-5 rounded-[2.5rem] border border-white/5 flex items-center justify-between active:scale-[0.98] transition-all"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform">
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center text-2xl border border-white/5">
                                             {event.gols > 0 ? '⚽' : event.assistencias > 0 ? '👟' : '🛡️'}
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-white">
+                                            <span className="text-xs font-black text-white italic tracking-tighter uppercase leading-none">
                                                 {event.athletes?.name}
                                             </span>
-                                            <span className="text-[8px] font-bold text-gray-500 uppercase">
-                                                {event.gols > 0 ? `${event.gols} Gols` : event.assistencias > 0 ? `${event.assistencias} Assis.` : 'SG Mantido'}
+                                            <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                                                {event.athletes?.pos} <span className="w-1 h-1 rounded-full bg-white/10" /> {event.gols > 0 ? 'GOL' : event.assistencias > 0 ? 'ASSIT.' : 'DEFS.'}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="text-[10px] font-black italic text-neon">
+                                    <div className="text-xl font-bebas text-volt italic leading-none">
                                         +{calculateScore(event, event.athletes?.pos).toFixed(1)}
                                     </div>
                                 </motion.div>
                             ))
                         ) : (
-                            <div className="glass p-8 rounded-[2rem] border border-white/5 text-center flex flex-col items-center gap-2 opacity-50">
-                                <TrendingUp className="text-gray-800" size={24} />
-                                <p className="text-[9px] font-black uppercase text-gray-600 tracking-widest leading-relaxed">
-                                    Sem dados para esta rodada.
+                            <div className="bento-card py-16 text-center flex flex-col items-center gap-4 opacity-40 grayscale">
+                                <TrendingUp size={32} />
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] max-w-[200px] leading-relaxed">
+                                    Nenhum evento registrado nesta rodada ainda.
                                 </p>
                             </div>
                         )}
