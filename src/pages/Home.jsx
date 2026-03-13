@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Zap, TrendingUp, Users, Calendar, ChevronRight, Trophy, Shield } from 'lucide-react';
+import { Loader2, Zap, TrendingUp, Users, Calendar, ChevronRight, Trophy, Shield, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { calculateScore } from '../utils/scoring';
