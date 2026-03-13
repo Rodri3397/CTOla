@@ -214,20 +214,20 @@ export default function AdminDashboard() {
                 </div>
 
                 {isAuthorized && (
-                    <div className="flex gap-2 p-1 bg-[#1a1d23] rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
+                    <div className="flex gap-2 p-1.5 bg-deep-charcoal/80 backdrop-blur-md rounded-2xl border border-white/5 overflow-x-auto no-scrollbar shadow-2xl">
                         {[
                             { id: 'overview', label: 'Geral', icon: LayoutDashboard },
                             { id: 'scouts', label: 'Pontuar', icon: Trophy },
-                            { id: 'teams', label: `Times (${teams.length})`, icon: Shield },
-                            { id: 'athletes', label: `Atletas (${athletes.length})`, icon: Users },
+                            { id: 'teams', label: `Times`, icon: Shield },
+                            { id: 'athletes', label: `Atletas`, icon: Users },
                             { id: 'members', label: 'Membros', icon: UserPlus }
                         ].map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-neon text-black neo-shadow' : 'text-gray-500 hover:text-white'}`}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-volt text-black shadow-[0_5px_15px_rgba(223,255,0,0.3)]' : 'text-gray-500 hover:text-white'}`}
                             >
-                                <tab.icon size={12} />
+                                <tab.icon size={12} strokeWidth={3} />
                                 {tab.label}
                             </button>
                         ))}
@@ -236,18 +236,19 @@ export default function AdminDashboard() {
             </header>
 
             {/* Notification Toast */}
+            {/* Notification Toast */}
             <AnimatePresence>
                 {notification && (
                     <motion.div
                         initial={{ opacity: 0, y: 50, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className={`fixed bottom-10 left-6 right-6 z-[200] p-5 rounded-3xl border shadow-2xl backdrop-blur-xl flex items-center justify-between ${
-                            notification.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-red-500/10 border-red-500/20 text-red-500'
+                        className={`fixed bottom-10 left-6 right-6 z-[200] p-6 rounded-[2.5rem] border shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex items-center justify-between ${
+                            notification.type === 'success' ? 'bg-volt/10 border-volt/20 text-volt' : 'bg-red-500/10 border-red-500/20 text-red-500'
                         }`}
                     >
-                        <span className="text-[10px] font-black uppercase tracking-widest">{notification.message}</span>
-                        <button onClick={() => setNotification(null)} className="p-2 hover:scale-110">✕</button>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{notification.message}</span>
+                        <button onClick={() => setNotification(null)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all">✕</button>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -256,27 +257,30 @@ export default function AdminDashboard() {
             <AnimatePresence>
                 {editingTeam && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
-                        <div className="w-full max-w-sm glass p-8 rounded-[2.5rem] border border-white/10 flex flex-col gap-6">
-                            <h3 className="text-xl font-black italic uppercase text-white">Editar Time</h3>
+                        <div className="w-full max-w-sm glass p-10 rounded-[3rem] border border-white/10 flex flex-col gap-8 shadow-2xl">
+                            <div className="flex flex-col gap-2">
+                                <h3 className="text-2xl font-bebas italic uppercase text-white tracking-widest">Editar Equipe</h3>
+                                <div className="h-0.5 w-10 bg-volt rounded-full" />
+                            </div>
                             <input
                                 type="text"
                                 value={editingTeam.name}
                                 onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-[11px] font-bold text-white outline-none focus:border-volt/30 transition-all"
                             />
-                            <div className="flex gap-3">
-                                <button onClick={() => setEditingTeam(null)} className="flex-1 py-4 text-[10px] font-black uppercase text-gray-500">Cancelar</button>
+                            <div className="flex gap-4">
+                                <button onClick={() => setEditingTeam(null)} className="flex-1 py-5 text-[10px] font-black uppercase text-gray-500 hover:text-white transition-all">Sair</button>
                                 <button
                                     onClick={async () => {
                                         const { error } = await updateTeam(editingTeam.id, editingTeam.name);
                                         if (!error) {
                                             setEditingTeam(null);
-                                            setNotification({ message: 'Time atualizado!', type: 'success' });
+                                            setNotification({ message: 'EQUIPE RENOMADA!', type: 'success' });
                                         }
                                     }}
-                                    className="flex-[2] bg-neon text-black py-4 rounded-2xl font-black text-[10px] uppercase"
+                                    className="flex-[2] bg-volt text-black py-5 rounded-2xl font-black text-[11px] uppercase shadow-[0_10px_25px_rgba(223,255,0,0.3)] hover:scale-105 active:scale-95 transition-all"
                                 >
-                                    Salvar Alterações
+                                    Atualizar
                                 </button>
                             </div>
                         </div>
@@ -288,33 +292,45 @@ export default function AdminDashboard() {
             <AnimatePresence>
                 {editingAthlete && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
-                        <div className="w-full max-w-sm glass p-8 rounded-[2.5rem] border border-white/10 flex flex-col gap-6">
-                            <h3 className="text-xl font-black italic uppercase text-white">Editar Atleta</h3>
-                            <div className="flex flex-col gap-4">
-                                <input
-                                    type="text"
-                                    value={editingAthlete.name}
-                                    onChange={(e) => setEditingAthlete({ ...editingAthlete, name: e.target.value })}
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white"
-                                />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <select
-                                        value={editingAthlete.pos}
-                                        onChange={(e) => setEditingAthlete({ ...editingAthlete, pos: e.target.value })}
-                                        className="bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-[10px] font-black uppercase text-white"
-                                    >
-                                        <option value="GOLEIRO">Goleiro</option><option value="FIXO">Fixo</option><option value="ALA">Ala</option><option value="PIVO">Pivô</option>
-                                    </select>
+                        <div className="w-full max-w-sm glass p-10 rounded-[3rem] border border-white/10 flex flex-col gap-8 shadow-2xl">
+                            <div className="flex flex-col gap-2">
+                                <h3 className="text-2xl font-bebas italic uppercase text-white tracking-widest">Painel do Atleta</h3>
+                                <div className="h-0.5 w-10 bg-volt rounded-full" />
+                            </div>
+                            <div className="flex flex-col gap-5">
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest ml-2">Identificação</span>
                                     <input
                                         type="text"
-                                        value={editingAthlete.price}
-                                        onChange={(e) => setEditingAthlete({ ...editingAthlete, price: e.target.value })}
-                                        className="bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-[10px] font-black text-center text-neon"
+                                        value={editingAthlete.name}
+                                        onChange={(e) => setEditingAthlete({ ...editingAthlete, name: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-[11px] font-bold text-white outline-none focus:border-volt/30 transition-all"
                                     />
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest ml-2">Posição</span>
+                                        <select
+                                            value={editingAthlete.pos}
+                                            onChange={(e) => setEditingAthlete({ ...editingAthlete, pos: e.target.value })}
+                                            className="bg-white/5 border border-white/10 rounded-2xl px-5 py-5 text-[10px] font-black uppercase text-white outline-none focus:border-volt/30"
+                                        >
+                                            <option value="GOLEIRO">Goleiro</option><option value="FIXO">Fixo</option><option value="ALA">Ala</option><option value="PIVO">Pivô</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest ml-2">Passe (C$)</span>
+                                        <input
+                                            type="text"
+                                            value={editingAthlete.price}
+                                            onChange={(e) => setEditingAthlete({ ...editingAthlete, price: e.target.value })}
+                                            className="bg-volt/5 border border-volt/20 rounded-2xl px-5 py-5 text-[11px] font-black text-center text-volt outline-none focus:border-volt transition-all"
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex gap-3">
-                                <button onClick={() => setEditingAthlete(null)} className="flex-1 py-4 text-[10px] font-black uppercase text-gray-500">Cancelar</button>
+                            <div className="flex gap-4">
+                                <button onClick={() => setEditingAthlete(null)} className="flex-1 py-5 text-[10px] font-black uppercase text-gray-500 hover:text-white transition-all">Cancelar</button>
                                 <button
                                     onClick={async () => {
                                         const { error } = await updateAthlete(editingAthlete.id, {
@@ -324,12 +340,12 @@ export default function AdminDashboard() {
                                         });
                                         if (!error) {
                                             setEditingAthlete(null);
-                                            setNotification({ message: 'Atleta atualizado!', type: 'success' });
+                                            setNotification({ message: 'CONTRATO ATUALIZADO!', type: 'success' });
                                         }
                                     }}
-                                    className="flex-[2] bg-neon text-black py-4 rounded-2xl font-black text-[10px] uppercase"
+                                    className="flex-[2] bg-volt text-black py-5 rounded-2xl font-black text-[11px] uppercase shadow-[0_10px_25px_rgba(223,255,0,0.3)] hover:scale-105 active:scale-95 transition-all"
                                 >
-                                    Salvar Alterações
+                                    Salvar
                                 </button>
                             </div>
                         </div>
@@ -344,12 +360,12 @@ export default function AdminDashboard() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl"
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl"
                     >
-                        <div className="w-full max-w-sm glass-dark p-10 rounded-[3rem] border border-white/10 flex flex-col gap-8">
+                        <div className="w-full max-w-sm glass p-10 rounded-[3rem] border border-white/10 flex flex-col gap-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                             <div className="text-center">
-                                <h3 className="text-xl font-black italic uppercase text-white tracking-tighter">Nova Competição</h3>
-                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2">Personalize sua liga agora</p>
+                                <h3 className="text-2xl font-bebas italic uppercase text-white tracking-tighter">Nova Arena</h3>
+                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2 border-t border-white/5 pt-2">Expanda sua liga</p>
                             </div>
                             <div className="flex flex-col gap-5">
                                 <input
@@ -357,214 +373,409 @@ export default function AdminDashboard() {
                                     value={newLeagueName}
                                     onChange={(e) => setNewLeagueName(e.target.value)}
                                     placeholder="NOME DA LIGA"
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold outline-none focus:border-neon text-white"
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-xs font-bold outline-none focus:border-volt/30 text-white placeholder:text-gray-700 transition-all"
                                 />
                                 <input
                                     type="text"
                                     value={leagueAdminCode}
                                     onChange={(e) => setLeagueAdminCode(e.target.value.toUpperCase())}
-                                    placeholder="SENHA MESTRE DE ADMIN"
-                                    className="w-full bg-neon/5 border border-neon/30 rounded-2xl px-6 py-4 text-xs font-black tracking-widest outline-none focus:border-neon text-white"
+                                    placeholder="SENHA MESTRE"
+                                    className="w-full bg-volt/5 border border-volt/20 rounded-2xl px-6 py-5 text-xs font-black tracking-[0.3em] outline-none focus:border-volt text-white transition-all shadow-inner"
                                 />
-                                <div className="flex p-1 bg-white/5 rounded-2xl border border-white/5 gap-1">
-                                    <button onClick={() => setIsPublic(true)} className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase transition-all ${isPublic ? 'bg-neon text-black' : 'text-gray-500'}`}>Pública</button>
-                                    <button onClick={() => setIsPublic(false)} className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase transition-all ${!isPublic ? 'bg-red-500 text-white' : 'text-gray-500'}`}>Privada</button>
+                                <div className="flex p-1 bg-black rounded-2xl border border-white/5 gap-1">
+                                    <button onClick={() => setIsPublic(true)} className={`flex-1 py-3.5 rounded-xl text-[9px] font-black uppercase transition-all ${isPublic ? 'bg-volt text-black shadow-lg' : 'text-gray-500'}`}>Pública</button>
+                                    <button onClick={() => setIsPublic(false)} className={`flex-1 py-3.5 rounded-xl text-[9px] font-black uppercase transition-all ${!isPublic ? 'bg-red-500 text-white shadow-lg' : 'text-gray-500'}`}>Privada</button>
                                 </div>
                             </div>
-                            <div className="flex gap-3">
-                                <button onClick={() => setShowCreateLeague(false)} className="flex-1 py-5 rounded-2xl text-[9px] font-black text-gray-500 uppercase">Cancelar</button>
-                                <button onClick={handleCreateLeague} disabled={loading || !newLeagueName || !leagueAdminCode} className="flex-[2] bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl">Criar Liga</button>
+                            <div className="flex gap-4">
+                                <button onClick={() => setShowCreateLeague(false)} className="flex-1 py-5 rounded-2xl text-[10px] font-black text-gray-600 uppercase hover:text-white transition-all">Sair</button>
+                                <button onClick={handleCreateLeague} disabled={loading || !newLeagueName || !leagueAdminCode} className="flex-[2] bg-volt text-black py-5 rounded-2xl font-black text-[11px] uppercase shadow-[0_10px_25px_rgba(223,255,0,0.3)] hover:scale-105 active:scale-95 transition-all">Lançar Liga</button>
                             </div>
                         </div>
                     </motion.div>
                 ) : !isAuthorized ? (
                     <motion.div
                         key="locked"
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="px-1 py-20 flex flex-col items-center justify-center gap-8"
+                        className="px-1 py-20 flex flex-col items-center justify-center gap-10"
                     >
-                        <Shield className="text-neon" size={48} />
-                        <h2 className="text-xl font-black italic uppercase text-white tracking-tighter">Área Restrita</h2>
-                        <div className="w-full max-w-sm flex flex-col gap-4 relative">
+                        <div className="w-24 h-24 bg-volt/5 rounded-[2.5rem] border border-volt/10 flex items-center justify-center text-volt shadow-[0_0_50px_rgba(223,255,0,0.05)] rotate-12">
+                            <Shield size={42} strokeWidth={1.5} />
+                        </div>
+                        <div className="text-center flex flex-col gap-2">
+                            <h2 className="text-3xl font-bebas italic uppercase text-white tracking-widest leading-none">Acesso Restrito</h2>
+                            <p className="text-[9px] font-black text-gray-700 uppercase tracking-[0.4em]">Propriedade do Organizador</p>
+                        </div>
+                        <div className="w-full max-w-sm flex flex-col gap-6 relative">
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => { setPassword(e.target.value.toUpperCase()); setPassError(false); }}
                                 onKeyDown={(e) => e.key === 'Enter' && handleAuthorize()}
-                                placeholder="CÓDIGO DE ACESSO"
-                                className={`w-full bg-white/5 border ${passError ? 'border-red-500' : 'border-white/10'} rounded-2xl px-6 py-5 text-center text-xs font-black tracking-[0.3em] outline-none focus:border-neon transition-all`}
+                                placeholder="••••••••"
+                                className={`w-full bg-deep-charcoal border ${passError ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : 'border-white/5'} rounded-2xl px-6 py-6 text-center text-lg font-black tracking-[0.6em] outline-none focus:border-volt transition-all shadow-2xl`}
                             />
-                            {passError && <span className="absolute -bottom-6 left-0 w-full text-center text-[8px] font-black text-red-500 uppercase">Acesso Negado</span>}
-                            <button onClick={handleAuthorize} className="mt-4 w-full bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all">Acessar Painel</button>
+                            {passError && <span className="absolute -bottom-8 left-0 w-full text-center text-[9px] font-black text-red-500 uppercase tracking-widest animate-vibrate">Código Inválido</span>}
+                            <button onClick={handleAuthorize} className="mt-4 w-full bg-volt text-black py-6 rounded-[2rem] font-black text-[11px] uppercase shadow-[0_15px_30px_rgba(223,255,0,0.2)] hover:scale-[1.03] active:scale-95 transition-all tracking-[0.1em]">Validar Credenciais</button>
                         </div>
                     </motion.div>
                 ) : activeTab === 'overview' ? (
-                    <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 py-6 flex flex-col gap-6">
-                        <div className="glass p-8 rounded-[2.5rem] border border-neon/20 bg-neon/5 flex flex-col gap-6">
-                            <div className="flex items-center gap-3">
-                                <Calendar className="text-neon" size={20} />
-                                <h3 className="text-xs font-black uppercase text-neon tracking-widest">Controle de Rodada</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex flex-col gap-4">
-                                    <span className="text-[8px] font-black uppercase text-gray-500 italic">Status do Mercado</span>
-                                    <span className="text-lg font-black uppercase italic text-white">
-                                        {activeRound?.status === 'open' ? (
-                                            <span className="text-green-500">Aberto</span>
-                                        ) : (
-                                            <span className="text-red-500 text-opacity-50">Fechado</span>
-                                        )}
-                                    </span>
-                                    <button 
-                                        onClick={() => updateRoundStatus(activeRoundId, activeRound?.status === 'open' ? 'locked' : 'open')} 
-                                        className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all ${activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-black'}`}
-                                    >
-                                        {activeRound?.status === 'open' ? 'Fechar Mercado' : 'Abrir Mercado'}
-                                    </button>
+                    <motion.div key="overview" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="px-1 py-8 flex flex-col gap-8">
+                        {/* Bento Grid Admin */}
+                        <div className="grid grid-cols-2 gap-5">
+                            <div className="col-span-2 glass p-8 rounded-[2.5rem] border-volt/20 bg-volt/5 flex flex-col gap-8 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-8 opacity-[0.03] text-volt group-hover:scale-125 transition-transform">
+                                    <Calendar size={120} />
                                 </div>
-                                <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex flex-col gap-4">
-                                    <span className="text-[8px] font-black uppercase text-gray-500 italic">Rodada Atual</span>
-                                    <span className="text-lg font-black uppercase italic text-white flex items-center gap-2">
-                                        Rodada {activeRound?.number || 1}
-                                        {loading && <Loader2 className="animate-spin text-neon" size={14} />}
-                                    </span>
-                                    <button onClick={async () => {
-                                        if (!activeRoundId) { await startNextRound(currentLeagueId); return; }
-                                        if (window.confirm('Encerrar rodada? Isso salvará os pontos finais.')) {
-                                            const { error } = await finishRound(activeRoundId);
-                                            if (!error) await startNextRound(currentLeagueId);
-                                        }
-                                    }} className="w-full py-4 bg-neon text-black rounded-2xl font-black text-[9px] uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all">Finalizar e Próxima</button>
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <div className="w-8 h-8 rounded-xl bg-volt flex items-center justify-center text-black">
+                                        <Calendar size={16} strokeWidth={3} />
+                                    </div>
+                                    <h3 className="text-[10px] font-black uppercase text-volt tracking-[0.3em]">Gestão de Rodada</h3>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
+                                    <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/5 flex flex-col gap-5">
+                                        <div className="flex justify-between items-start">
+                                            <span className="text-[9px] font-black uppercase text-gray-500 italic tracking-widest">Mercado do App</span>
+                                            <div className={`w-2 h-2 rounded-full ${activeRound?.status === 'open' ? 'bg-volt animate-pulse' : 'bg-red-500'}`} />
+                                        </div>
+                                        <span className="text-2xl font-bebas uppercase italic text-white tracking-widest">
+                                            {activeRound?.status === 'open' ? 'ABERTO' : 'FECHADO'}
+                                        </span>
+                                        <button 
+                                            onClick={() => updateRoundStatus(activeRoundId, activeRound?.status === 'open' ? 'locked' : 'open')} 
+                                            className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] transition-all ${activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-volt text-black shadow-lg shadow-volt/10'}`}
+                                        >
+                                            {activeRound?.status === 'open' ? 'TRAVAR MERCADO' : 'ABRIR PARA ESCALACAO'}
+                                        </button>
+                                    </div>
+
+                                    <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/5 flex flex-col gap-5">
+                                        <span className="text-[9px] font-black uppercase text-gray-500 italic tracking-widest">Fase Atual</span>
+                                        <span className="text-2xl font-bebas uppercase italic text-volt flex items-center gap-3 tracking-widest">
+                                            RODADA {activeRound?.number || 1}
+                                            {loading && <Loader2 className="animate-spin" size={18} />}
+                                        </span>
+                                        <button onClick={async () => {
+                                            if (!activeRoundId) { await startNextRound(currentLeagueId); return; }
+                                            if (window.confirm('Encerrar rodada? Isso salvará os pontos finais.')) {
+                                                const { error } = await finishRound(activeRoundId);
+                                                if (!error) await startNextRound(currentLeagueId);
+                                            }
+                                        }} className="w-full py-4 bg-white/5 text-white border border-white/10 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all">VIRAR PARA PROXIMA</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bento-card flex flex-col gap-4 border-white/5 group">
+                                <Users className="text-gray-700 group-hover:text-volt transition-colors" size={20} />
+                                <div className="flex flex-col">
+                                    <span className="text-3xl font-bebas text-white leading-none">{athletes.length}</span>
+                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest mt-1">ATLETAS ATIVOS</span>
+                                </div>
+                            </div>
+
+                            <div className="bento-card flex flex-col gap-4 border-white/5 group">
+                                <Shield className="text-gray-700 group-hover:text-volt transition-colors" size={20} />
+                                <div className="flex flex-col">
+                                    <span className="text-3xl font-bebas text-white leading-none">{teams.length}</span>
+                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest mt-1">TIMES DA LIGA</span>
                                 </div>
                             </div>
                         </div>
-                        <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex flex-col gap-6">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Configurações da Liga</h3>
-                            <div className="flex gap-4">
-                                <div className="flex-1 flex flex-col gap-1 p-3 bg-white/5 rounded-xl">
-                                    <span className="text-[7px] font-black uppercase text-gray-400">Invite Code</span>
-                                    <span className="text-sm font-black text-neon tracking-widest">{currentLeague?.invite_code || '---'}</span>
+
+                        <div className="glass p-8 rounded-[2.5rem] border border-white/5 flex flex-col gap-8">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 border-b border-white/5 pb-4">Configurações Avançadas</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="flex flex-col gap-3 p-5 bg-black rounded-3xl border border-white/5 shadow-inner">
+                                    <span className="text-[8px] font-black uppercase text-gray-600 tracking-widest">Código de Convite</span>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-lg font-bebas text-volt tracking-widest italic">{currentLeague?.invite_code || '---'}</span>
+                                        <button className="text-[8px] font-black text-gray-500 uppercase">Copiar</button>
+                                    </div>
                                 </div>
-                                <div className="flex-1 flex flex-col gap-1 p-3 bg-white/5 rounded-xl">
-                                    <span className="text-[7px] font-black uppercase text-gray-400">Minha Senha</span>
+                                <div className="flex flex-col gap-3 p-4 bg-black rounded-3xl border border-white/5">
+                                    <span className="text-[8px] font-black uppercase text-gray-600 tracking-widest">Sua Senha Mestre</span>
                                     <input 
                                         type="text" 
-                                        placeholder="Atualizar Senha"
-                                        className="bg-transparent border-none outline-none text-[10px] font-black text-neon"
+                                        placeholder="Nova Senha..."
+                                        className="bg-transparent border-none outline-none text-xs font-black text-volt placeholder:text-gray-800 tracking-widest"
                                         onKeyDown={async (e) => {
                                             if (e.key === 'Enter') {
                                                 const code = e.target.value.trim().toUpperCase();
                                                 if (!code) return;
                                                 const { error } = await supabase.from('league_members').update({ admin_code: code })
                                                     .eq('league_id', currentLeagueId).eq('user_id', user.id);
-                                                if (!error) alert('Senha atualizada!');
+                                                if (!error) {
+                                                    setNotification({ message: 'Senha Mestre Atualizada!', type: 'success' });
+                                                    e.target.value = '';
+                                                }
                                             }
                                         }}
                                     />
                                 </div>
                             </div>
                         </div>
-                        <RoundSelector isAdmin />
+                        <div className="px-1"><RoundSelector isAdmin /></div>
                     </motion.div>
                 ) : activeTab === 'scouts' ? (
-                    <motion.div key="scouts" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 py-6 flex flex-col gap-6">
-                        <div className="glass p-8 rounded-[2.5rem] border border-neon/20 bg-neon/5 flex flex-col gap-6">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-neon">Lançar Pontuação</h3>
-                            <select value={selectedAthleteId} onChange={(e) => setSelectedAthleteId(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white outline-none">
-                                <option value="">Selecione o Atleta</option>
-                                {athletes.map(a => <option key={a.id} value={a.id}>{a.name} ({a.teams?.name})</option>)}
-                            </select>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {['gols', 'assistencias', 'penaltisperdidos', 'tiroslivresdefendidos', 'penaltisdefendidos', 'golssofridos'].map(s => (
-                                    <div key={s} className="flex flex-col gap-2">
-                                        <label className="text-[8px] font-black uppercase text-gray-500 ml-2">{s}</label>
-                                        <input type="number" value={scoutData[s]} onChange={(e) => setScoutData({ ...scoutData, [s]: parseInt(e.target.value) || 0 })} className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-center text-xs font-black text-neon outline-none" />
-                                    </div>
-                                ))}
+                    <motion.div key="scouts" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="px-1 py-8 flex flex-col gap-8">
+                        <div className="glass p-8 rounded-[2.5rem] border border-volt/20 bg-volt/5 flex flex-col gap-8">
+                            <div className="flex flex-col gap-2">
+                                <h3 className="text-2xl font-bebas italic uppercase text-volt tracking-widest">Painel de Arbitragem</h3>
+                                <p className="text-[9px] font-black text-gray-700 uppercase tracking-[0.4em]">Registro oficial de eventos</p>
                             </div>
-                            <button onClick={handleSaveScout} disabled={!selectedAthleteId} className="w-full bg-neon text-black py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all">Salvar Scout</button>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {scoutFeed.map(s => (
-                                <div key={s.id} className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-white uppercase">{s.athletes?.name}</span>
-                                        <span className="text-[7px] font-black text-neon uppercase italic">{s.gols} Gols | {s.assistencias} Ast</span>
-                                    </div>
-                                    <button onClick={() => handleEditScout(s)} className="p-3 bg-white/5 rounded-xl text-gray-400 hover:text-neon transition-all"><Info size={14} /></button>
+
+                            <div className="flex flex-col gap-5">
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest ml-2">Atleta em Campo</span>
+                                    <select 
+                                        value={selectedAthleteId} 
+                                        onChange={(e) => setSelectedAthleteId(e.target.value)} 
+                                        className="w-full bg-black/50 border border-white/5 rounded-2xl px-6 py-5 text-sm font-bold text-white outline-none focus:border-volt/30 transition-all appearance-none"
+                                    >
+                                        <option value="">SELECIONE O CRAQUE</option>
+                                        {athletes.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name.toUpperCase()} ({a.teams?.name?.toUpperCase()})</option>)}
+                                    </select>
                                 </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+                                    {[
+                                        { key: 'gols', label: 'GOLS', icon: '⚽' },
+                                        { key: 'assistencias', label: 'ASSIST.', icon: '👟' },
+                                        { key: 'penaltisperdidos', label: 'P. PERDIDO', icon: '❌' },
+                                        { key: 'tiroslivresdefendidos', label: 'T.L. DEF.', icon: '🧤' },
+                                        { key: 'penaltisdefendidos', label: 'P. DEF.', icon: '🛡️' },
+                                        { key: 'golssofridos', label: 'G. SOFRIDO', icon: '⚽' }
+                                    ].map(s => (
+                                        <div key={s.key} className="flex flex-col gap-2 p-4 bg-black/40 rounded-3xl border border-white/5 hover:border-volt/20 transition-all group">
+                                            <label className="text-[8px] font-black uppercase text-gray-600 tracking-widest flex items-center gap-2">
+                                                <span>{s.icon}</span> {s.label}
+                                            </label>
+                                            <input 
+                                                type="number" 
+                                                value={scoutData[s.key]} 
+                                                onChange={(e) => setScoutData({ ...scoutData, [s.key]: parseInt(e.target.value) || 0 })} 
+                                                className="w-full bg-transparent border-none text-center text-xl font-bebas text-white outline-none group-hover:text-volt transition-colors" 
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <button 
+                                onClick={handleSaveScout} 
+                                disabled={!selectedAthleteId || loading} 
+                                className="w-full bg-volt text-black py-6 rounded-[2rem] font-black text-[11px] uppercase shadow-[0_15px_30px_rgba(223,255,0,0.2)] hover:scale-[1.02] active:scale-95 transition-all tracking-widest disabled:opacity-20 disabled:grayscale"
+                            >
+                                {loading ? 'PROCESSANDO...' : 'REGISTRAR SCOUT'}
+                            </button>
+                        </div>
+
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center justify-between px-2">
+                                <h4 className="text-[10px] font-black text-gray-700 uppercase tracking-widest">Feed de Lançamentos</h4>
+                                <span className="text-[8px] font-bold text-gray-800 uppercase">{scoutFeed.length} EVENTOS</span>
+                            </div>
+                            {scoutFeed.map(s => (
+                                <motion.div 
+                                    key={s.id} 
+                                    initial={{ opacity: 0, x: -10 }} 
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className="bg-deep-charcoal/40 p-5 rounded-[2.5rem] border border-white/5 flex items-center justify-between group hover:bg-black/60 transition-all shadow-xl"
+                                >
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-black border border-white/5 flex items-center justify-center text-lg shadow-inner group-hover:scale-110 transition-transform">
+                                            {s.gols > 0 ? '⚽' : s.assistencias > 0 ? '👟' : '🛡️'}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-black text-white italic tracking-tighter uppercase leading-none">{s.athletes?.name}</span>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="text-[8px] font-black text-volt uppercase tracking-widest">{s.gols} Gols | {s.assistencias} Ast</span>
+                                                <div className="w-1 h-1 rounded-full bg-white/10" />
+                                                <span className="text-[8px] font-bold text-gray-700 uppercase tracking-widest">{s.athletes?.pos}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleEditScout(s)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-600 hover:text-volt hover:bg-white/10 transition-all">
+                                        <Info size={14} />
+                                    </button>
+                                </motion.div>
                             ))}
                         </div>
                     </motion.div>
                 ) : activeTab === 'teams' ? (
-                    <motion.div key="teams" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 py-6 flex flex-col gap-6">
-                        <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex gap-2">
-                            <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Nome do Time" className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none" />
-                            <button onClick={handleAddTeam} className="w-14 h-14 bg-neon rounded-2xl flex items-center justify-center text-black shadow-lg"><Plus size={24} strokeWidth={3} /></button>
+                    <motion.div key="teams" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 py-8 flex flex-col gap-8">
+                        <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex gap-4 p-4 shadow-2xl">
+                            <input 
+                                type="text" 
+                                value={teamName} 
+                                onChange={(e) => setTeamName(e.target.value)} 
+                                placeholder="NOME DA NOVA EQUIPE..." 
+                                className="flex-1 bg-white/5 border border-white/10 rounded-[1.8rem] px-8 py-5 text-[11px] font-bold text-white outline-none focus:border-volt/30 transition-all" 
+                            />
+                            <button 
+                                onClick={handleAddTeam} 
+                                className="w-14 h-14 bg-volt rounded-[1.8rem] flex items-center justify-center text-black shadow-[0_10px_20px_rgba(223,255,0,0.3)] hover:scale-110 active:scale-90 transition-all"
+                            >
+                                <Plus size={24} strokeWidth={3} />
+                            </button>
                         </div>
-                        {teams.map(t => (
-                            <div key={t.id} className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between group">
-                                <span className="text-xs font-bold text-white uppercase">{t.name}</span>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setEditingTeam(t)} className="p-3 bg-white/5 rounded-xl text-gray-500 hover:text-neon transition-all"><Info size={16} /></button>
-                                    <button onClick={() => deleteTeam(t.id)} className="p-3 text-gray-700 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
-                                </div>
-                            </div>
-                        ))}
-                    </motion.div>
-                ) : activeTab === 'athletes' ? (
-                    <motion.div key="athletes" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 py-6 flex flex-col gap-6">
-                        <div className="glass p-6 rounded-[2.5rem] border border-white/5 flex flex-col gap-4">
-                            <input type="text" value={athlete.name} onChange={(e) => setAthlete({ ...athlete, name: e.target.value })} placeholder="Nome do Atleta" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none" />
-                            <div className="grid grid-cols-2 gap-4">
-                                <select value={athlete.pos} onChange={(e) => setAthlete({ ...athlete, pos: e.target.value })} className="bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-[10px] font-black uppercase text-white outline-none">
-                                    <option value="GOLEIRO">Goleiro</option><option value="FIXO">Fixo</option><option value="ALA">Ala</option><option value="PIVO">Pivô</option>
-                                </select>
-                                <input type="text" value={athlete.price} onChange={(e) => setAthlete({ ...athlete, price: e.target.value })} placeholder="Preço" className="bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-[10px] font-black text-center text-neon" />
-                            </div>
-                            <select value={athlete.team_id} onChange={(e) => setAthlete({ ...athlete, team_id: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-[10px] font-black uppercase text-white outline-none">
-                                <option value="">Selecione o Time</option>
-                                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                            </select>
-                            <button onClick={handleAddAthlete} className="bg-neon text-black py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl">Salvar Atleta</button>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {filteredAthletes.map(a => (
-                                <div key={a.id} className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between group">
-                                    <div className="flex flex-col font-bold">
-                                        <span className="text-xs text-white uppercase">{a.name}</span>
-                                        <span className="text-[8px] text-gray-600 uppercase tracking-widest">{a.teams?.name} | {a.pos}</span>
+                        
+                        <div className="grid grid-cols-1 gap-4">
+                            {teams.map(t => (
+                                <motion.div 
+                                    key={t.id} 
+                                    whileHover={{ x: 5 }}
+                                    className="bg-deep-charcoal/40 p-6 rounded-[2.5rem] border border-white/5 flex items-center justify-between group hover:bg-black/60 transition-all shadow-xl"
+                                >
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-volt/5 border border-volt/20 flex items-center justify-center text-volt italic font-bebas text-lg">
+                                            {t.name.substring(0, 1)}
+                                        </div>
+                                        <span className="text-sm font-black text-white italic tracking-tighter uppercase">{t.name}</span>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={() => setEditingAthlete(a)} className="p-3 bg-white/5 rounded-xl text-gray-500 hover:text-neon transition-all"><Info size={14} /></button>
-                                        <button onClick={() => deleteAthlete(a.id)} className="p-2 text-gray-700 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                                        <button onClick={() => setEditingTeam(t)} className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 hover:text-volt hover:bg-volt/10 transition-all">
+                                            <Info size={18} />
+                                        </button>
+                                        <button onClick={() => deleteTeam(t.id)} className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-800 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100">
+                                            <Trash2 size={18} />
+                                        </button>
                                     </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                ) : activeTab === 'athletes' ? (
+                    <motion.div key="athletes" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 py-8 flex flex-col gap-8">
+                        <div className="glass p-8 rounded-[3rem] border border-white/5 flex flex-col gap-6 shadow-2xl">
+                            <div className="flex flex-col gap-3">
+                                <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest ml-2">Novo Contrato</span>
+                                <input 
+                                    type="text" 
+                                    value={athlete.name} 
+                                    onChange={(e) => setAthlete({ ...athlete, name: e.target.value })} 
+                                    placeholder="NOME DO ATLETA" 
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-[11px] font-bold text-white outline-none focus:border-volt/30 transition-all" 
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-5">
+                                <div className="flex flex-col gap-3">
+                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest ml-2">Posição</span>
+                                    <select 
+                                        value={athlete.pos} 
+                                        onChange={(e) => setAthlete({ ...athlete, pos: e.target.value })} 
+                                        className="bg-black/50 border border-white/10 rounded-2xl px-5 py-5 text-[10px] font-black uppercase text-white outline-none"
+                                    >
+                                        <option value="GOLEIRO">GOLEIRO</option><option value="FIXO">FIXO</option><option value="ALA">ALA</option><option value="PIVO">PIVÔ</option>
+                                    </select>
                                 </div>
+                                <div className="flex flex-col gap-3">
+                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest ml-2">Preço (C$)</span>
+                                    <input 
+                                        type="text" 
+                                        value={athlete.price} 
+                                        onChange={(e) => setAthlete({ ...athlete, price: e.target.value })} 
+                                        placeholder="10.0" 
+                                        className="bg-volt/5 border border-volt/20 rounded-2xl px-5 py-5 text-[11px] font-black text-center text-volt outline-none" 
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest ml-2">Vínculo</span>
+                                <select 
+                                    value={athlete.team_id} 
+                                    onChange={(e) => setAthlete({ ...athlete, team_id: e.target.value })} 
+                                    className="w-full bg-black/50 border border-white/10 rounded-2xl px-5 py-5 text-[10px] font-black uppercase text-white outline-none"
+                                >
+                                    <option value="">SELECIONE O TIME</option>
+                                    {teams.map(t => <option key={t.id} value={t.id}>{t.name.toUpperCase()}</option>)}
+                                </select>
+                            </div>
+                            <button 
+                                onClick={handleAddAthlete} 
+                                className="w-full bg-volt text-black py-6 rounded-[2rem] font-black text-[11px] uppercase shadow-[0_15px_30px_rgba(223,255,0,0.2)] hover:scale-[1.02] active:scale-95 transition-all tracking-widest"
+                            >
+                                EFETIVAR CONTRATAÇÃO
+                            </button>
+                        </div>
+
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center justify-between px-2">
+                                <h4 className="text-[10px] font-black text-gray-700 uppercase tracking-widest">Atletas Registrados</h4>
+                                <span className="text-[8px] font-bold text-gray-800 uppercase">{filteredAthletes.length} TOTAL</span>
+                            </div>
+                            {filteredAthletes.map(a => (
+                                <motion.div 
+                                    key={a.id} 
+                                    whileHover={{ x: 5 }}
+                                    className="bg-deep-charcoal/40 p-6 rounded-[2.5rem] border border-white/5 flex items-center justify-between group hover:bg-black/60 transition-all shadow-xl"
+                                >
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-black border border-white/5 flex items-center justify-center font-bebas italic text-volt shadow-inner">
+                                            {a.pos.substring(0, 1)}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-black text-white italic tracking-tighter uppercase leading-none">{a.name}</span>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="text-[8px] font-bold text-gray-700 uppercase tracking-[0.2em]">{a.teams?.name}</span>
+                                                <div className="w-1 h-1 rounded-full bg-volt/30" />
+                                                <span className="text-[8px] font-black text-volt uppercase">C$ {a.price?.toFixed(1)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setEditingAthlete(a)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-600 hover:text-volt hover:bg-volt/10 transition-all">
+                                            <Info size={14} />
+                                        </button>
+                                        <button onClick={() => deleteAthlete(a.id)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-800 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                </motion.div>
                             ))}
                         </div>
                     </motion.div>
                 ) : (
-                    <motion.div key="members" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-1 py-6 flex flex-col gap-4">
-                        {leagueMembers.map(member => (
-                            <div key={member.id} className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center uppercase font-black text-neon text-[10px]">
-                                        {member.profiles?.name?.substring(0, 2) || '??'}
+                    <motion.div key="members" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="px-1 py-8 flex flex-col gap-6">
+                        <div className="flex flex-col gap-2 mb-2">
+                            <h3 className="text-2xl font-bebas italic uppercase text-white tracking-widest pl-2">Membros da Liga</h3>
+                            <div className="h-0.5 w-10 bg-volt rounded-full ml-2" />
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                            {leagueMembers.map(member => (
+                                <motion.div 
+                                    key={member.id} 
+                                    className="bg-deep-charcoal/40 p-6 rounded-[2.5rem] border border-white/5 flex items-center justify-between group hover:bg-black/60 transition-all shadow-xl"
+                                >
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-14 h-14 rounded-2xl bg-black border border-white/5 flex items-center justify-center relative shadow-inner">
+                                            <span className="text-lg font-bebas italic text-volt">{member.profiles?.name?.substring(0, 1).toUpperCase()}</span>
+                                            {member.role === 'ADMIN' && (
+                                                <div className="absolute -top-2 -right-2 w-6 h-6 bg-volt rounded-lg flex items-center justify-center text-black border-2 border-black rotate-12">
+                                                    <Trophy size={10} strokeWidth={3} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-black text-white italic tracking-tighter uppercase leading-none">{member.profiles?.name}</span>
+                                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-[0.3em] mt-2 italic">{member.role}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-white uppercase">{member.profiles?.name}</span>
-                                        <span className="text-[7px] font-black text-gray-600 uppercase">{member.role}</span>
-                                    </div>
-                                </div>
-                                {currentLeague?.owner_id === user.id && member.user_id !== user.id && (
-                                    <button onClick={() => updateMemberRole(currentLeagueId, member.user_id, member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN')} className="px-3 py-2 bg-white/5 text-gray-500 rounded-xl text-[7px] font-black uppercase hover:text-neon transition-all">
-                                        {member.role === 'ADMIN' ? 'Remover Admin' : 'Tornar Admin'}
-                                    </button>
-                                )}
-                            </div>
-                        ))}
+                                    {currentLeague?.owner_id === user.id && member.user_id !== user.id && (
+                                        <button 
+                                            onClick={() => updateMemberRole(currentLeagueId, member.user_id, member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN')} 
+                                            className="px-6 py-3.5 bg-white/5 text-[9px] font-black uppercase text-gray-500 rounded-2xl hover:bg-volt/10 hover:text-volt transition-all border border-transparent hover:border-volt/20"
+                                        >
+                                            {member.role === 'ADMIN' ? 'REVOGAR ADMIN' : 'PROMOVER'}
+                                        </button>
+                                    )}
+                                </motion.div>
+                            ))}
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
