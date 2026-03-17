@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Medal, ChevronRight, User, TrendingUp, Zap, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../store/useStore';
+import { supabase } from '../lib/supabase';
 import { calculateScore } from '../utils/scoring';
 
 const Ranking = () => {
-    const { currentLeagueId, fetchLeaderboard, rounds, activeRoundId, supabase } = useStore();
+    const { currentLeagueId, fetchLeaderboard, rounds, activeRoundId } = useStore();
     const [leaderboard, setLeaderboard] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('TOTAL'); // 'TOTAL' or 'ROUND'

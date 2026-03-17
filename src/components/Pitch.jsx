@@ -1,3 +1,7 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Plus, Shield } from 'lucide-react';
+
 const PitchSlot = ({ athlete, label, isCaptain, onSelect, onRemove, position }) => {
     return (
         <motion.div
