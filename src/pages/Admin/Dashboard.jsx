@@ -35,13 +35,16 @@ export default function AdminDashboard() {
         id: null,
         gols: 0,
         assistencias: 0,
-        penaltisperdidos: 0,
-        tiroslivresdefendidos: 0,
-        penaltisdefendidos: 0,
-        golssofridos: 0,
-        melhorgoleiro: false,
-        participou: true,
-        equipesofreugol: false
+        finalizacoes_defendidas: 0,
+        desarmes: 0,
+        gols_goleiro_linha: 0,
+        cartao_amarelo: 0,
+        cartao_vermelho: 0,
+        gol_contra: 0,
+        faltas_cometidas: 0,
+        gols_sofridos: 0,
+        equipe_sofreu_gol: false,
+        participou: true
     });
     const [scoutFeed, setScoutFeed] = useState([]);
 
@@ -147,8 +150,19 @@ export default function AdminDashboard() {
         if (!error) {
             setSelectedAthleteId('');
             setScoutData({
-                id: null, goals: 0, assistencias: 0, penaltisperdidos: 0, tiroslivresdefendidos: 0,
-                penaltisdefendidos: 0, golssofridos: 0, melhorgoleiro: false, participou: true, equipesofreugol: false
+        id: null,
+        gols: 0,
+        assistencias: 0,
+        finalizacoes_defendidas: 0,
+        desarmes: 0,
+        gols_goleiro_linha: 0,
+        cartao_amarelo: 0,
+        cartao_vermelho: 0,
+        gol_contra: 0,
+        faltas_cometidas: 0,
+        gols_sofridos: 0,
+        equipe_sofreu_gol: false,
+        participou: true
             });
             const { data } = await supabase.from('match_stats').select('*, athletes(name, pos)')
                 .eq('round_id', activeRoundId).eq('league_id', currentLeagueId);
@@ -159,10 +173,19 @@ export default function AdminDashboard() {
     const handleEditScout = (scout) => {
         setSelectedAthleteId(scout.athlete_id);
         setScoutData({
-            id: scout.id, goals: scout.gols, assistencias: scout.assistencias,
-            penaltisperdidos: scout.penaltisperdidos, tiroslivresdefendidos: scout.tiroslivresdefendidos,
-            penaltisdefendidos: scout.penaltisdefendidos, golssofridos: scout.golssofridos,
-            melhorgoleiro: scout.melhorgoleiro, participou: scout.participou, equipesofreugol: scout.equipesofreugol
+            id: scout.id, 
+            gols: scout.gols, 
+            assistencias: scout.assistencias,
+            finalizacoes_defendidas: scout.finalizacoes_defendidas, 
+            desarmes: scout.desarmes,
+            gols_goleiro_linha: scout.gols_goleiro_linha, 
+            cartao_amarelo: scout.cartao_amarelo,
+            cartao_vermelho: scout.cartao_vermelho, 
+            gol_contra: scout.gol_contra, 
+            faltas_cometidas: scout.faltas_cometidas,
+            gols_sofridos: scout.gols_sofridos,
+            equipe_sofreu_gol: scout.equipe_sofreu_gol,
+            participou: scout.participou
         });
         setActiveTab('scouts');
     };
@@ -541,27 +564,57 @@ export default function AdminDashboard() {
                                     </select>
                                 </div>
 
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4 border-t border-white/5 pt-4">
                                     {[
-                                        { key: 'gols', label: 'GOLS', icon: '⚽' },
-                                        { key: 'assistencias', label: 'ASSIST.', icon: '👟' },
-                                        { key: 'penaltisperdidos', label: 'P. PERDIDO', icon: '❌' },
-                                        { key: 'tiroslivresdefendidos', label: 'T.L. DEF.', icon: '🧤' },
-                                        { key: 'penaltisdefendidos', label: 'P. DEF.', icon: '🛡️' },
-                                        { key: 'golssofridos', label: 'G. SOFRIDO', icon: '⚽' }
+                                        { key: 'gols', label: 'GOLS', icon: '⚽', color: 'text-volt' },
+                                        { key: 'assistencias', label: 'ASSIST.', icon: '👟', color: 'text-volt' },
+                                        { key: 'finalizacoes_defendidas', label: 'FIN. DEF', icon: '🎯', color: 'text-volt' },
+                                        { key: 'desarmes', label: 'DESARMES', icon: '🛡️', color: 'text-volt' },
+                                        { key: 'gols_goleiro_linha', label: 'GÓL. LINHA', icon: '🔥', color: 'text-volt' },
+                                        { key: 'cartao_amarelo', label: 'C. AMARELO', icon: '🟨', color: 'text-red-500' },
+                                        { key: 'cartao_vermelho', label: 'C. VERMELHO', icon: '🟥', color: 'text-red-500' },
+                                        { key: 'gol_contra', label: 'G. CONTRA', icon: '🤦', color: 'text-red-500' },
+                                        { key: 'faltas_cometidas', label: 'FALTAS', icon: '⚠️', color: 'text-red-500' },
                                     ].map(s => (
-                                        <div key={s.key} className="flex flex-col gap-2 p-4 bg-black/40 rounded-3xl border border-white/5 hover:border-volt/20 transition-all group">
+                                        <div key={s.key} className="flex flex-col gap-2 p-4 bg-black/40 rounded-2xl border border-white/5 hover:border-volt/20 transition-all group">
                                             <label className="text-[8px] font-black uppercase text-gray-600 tracking-widest flex items-center gap-2">
                                                 <span>{s.icon}</span> {s.label}
                                             </label>
                                             <input 
                                                 type="number" 
-                                                value={scoutData[s.key]} 
+                                                value={scoutData[s.key] || 0} 
                                                 onChange={(e) => setScoutData({ ...scoutData, [s.key]: parseInt(e.target.value) || 0 })} 
-                                                className="w-full bg-transparent border-none text-center text-xl font-bebas text-white outline-none group-hover:text-volt transition-colors" 
+                                                className={`w-full bg-transparent border-none text-center text-2xl font-bebas outline-none ${s.color} transition-colors`} 
                                             />
                                         </div>
                                     ))}
+                                    
+                                    {/* Campos Específicos Goleiro / Equipe */}
+                                    <div className="col-span-full grid grid-cols-2 gap-4 mt-2 border-t border-white/5 pt-4">
+                                        <div className="flex flex-col gap-2 p-4 bg-red-500/5 rounded-2xl border border-red-500/10">
+                                            <label className="text-[8px] font-black uppercase text-red-400 tracking-widest flex items-center gap-2">
+                                                <span>🥅</span> GOLS SOFRIDOS (Goleiro)
+                                            </label>
+                                            <input 
+                                                type="number" 
+                                                value={scoutData.gols_sofridos || 0} 
+                                                onChange={(e) => setScoutData({ ...scoutData, gols_sofridos: parseInt(e.target.value) || 0 })} 
+                                                className="w-full bg-transparent border-none text-center text-2xl font-bebas outline-none text-red-500" 
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
+                                            <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest flex flex-col gap-1">
+                                                <span>TIME SOFREU GOL?</span>
+                                                <span className="text-[7px] text-gray-600">Perde bônus SG</span>
+                                            </label>
+                                            <button 
+                                                onClick={() => setScoutData({ ...scoutData, equipe_sofreu_gol: !scoutData.equipe_sofreu_gol })}
+                                                className={`w-14 h-8 rounded-full flex items-center p-1 transition-all ${scoutData.equipe_sofreu_gol ? 'bg-red-500 justify-end' : 'bg-white/10 justify-start'}`}
+                                            >
+                                                <div className="w-6 h-6 bg-white rounded-full shadow-md" />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -593,9 +646,13 @@ export default function AdminDashboard() {
                                         <div className="flex flex-col">
                                             <span className="text-xs font-black text-white italic tracking-tighter uppercase leading-none">{s.athletes?.name}</span>
                                             <div className="flex items-center gap-2 mt-2">
-                                                <span className="text-[8px] font-black text-volt uppercase tracking-widest">{s.gols} Gols | {s.assistencias} Ast</span>
+                                                <span className="text-[12px] font-black text-volt uppercase bg-volt/10 px-2 py-0.5 rounded flex items-center gap-1">
+                                                    {s.points?.toFixed(1) || '0.0'} <span className="text-[8px] text-volt/70">PTS</span>
+                                                </span>
                                                 <div className="w-1 h-1 rounded-full bg-white/10" />
-                                                <span className="text-[8px] font-bold text-gray-700 uppercase tracking-widest">{s.athletes?.pos}</span>
+                                                <span className="text-[9px] font-black text-white uppercase tracking-widest pt-0.5">{s.gols}G | {s.assistencias}A</span>
+                                                <div className="w-1 h-1 rounded-full bg-white/10" />
+                                                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">{s.athletes?.pos}</span>
                                             </div>
                                         </div>
                                     </div>

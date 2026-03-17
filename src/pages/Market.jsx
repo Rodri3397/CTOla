@@ -146,6 +146,7 @@ export default function Market() {
                     <div className="grid grid-cols-1 gap-5">
                         {filteredAthletes.map((athlete, idx) => {
                             const valProjection = ((athlete.price - (athlete.last_score || 0)) / 10).toFixed(1);
+                            const lastScore = athlete.last_score?.toFixed(1) || '0.0';
                             const isValPositive = parseFloat(valProjection) >= 0;
                             const isHired = Object.values(draftSquad).includes(athlete.id);
 
@@ -176,7 +177,11 @@ export default function Market() {
                                                 <span className="text-[9px] font-bold text-volt uppercase tracking-widest">{athlete.pos}</span>
                                             </div>
                                             <div className="mt-4 flex items-center gap-3">
-                                                <Sparkline data={[2, 4, 3, 6, 5]} color={isHired ? '#DFFF00' : '#333'} />
+                                                <div className="flex bg-volt/10 border border-volt/20 rounded-lg px-2 py-1 items-center gap-1">
+                                                    <span className="text-[12px] font-black text-volt italic">{lastScore}</span>
+                                                    <span className="text-[8px] font-black text-volt/70 uppercase">PTS</span>
+                                                </div>
+                                                <Sparkline data={[2, 4, 3, athlete.last_score || 0, athlete.last_score || 0]} color={isHired ? '#DFFF00' : '#333'} />
                                                 <span className={`text-[8px] font-black ${isValPositive ? 'text-volt' : 'text-electric-crimson'}`}>
                                                     {isValPositive ? '▲' : '▼'} {valProjection}%
                                                 </span>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { calculateScore } from '../utils/scoring';
 
 export const useStore = create((set, get) => ({
     teams: [],
@@ -672,7 +673,28 @@ export const useStore = create((set, get) => ({
                 .order('name');
 
             if (error) set({ error: error.message, loading: false });
-            else set({ athletes: data || [], loading: false });
+            else {
+                // Fetch last scores for athletes
+                const athleteIds = data?.map(a => a.id) || [];
+                let enrichedAthletes = data || [];
+                
+                if (athleteIds.length > 0) {
+                    const { data: statsData } = await supabase
+                        .from('match_stats')
+                        .select('athlete_id, points')
+                        .in('athlete_id', athleteIds)
+                        .order('created_at', { ascending: false });
+
+                    if (statsData) {
+                        enrichedAthletes = enrichedAthletes.map(athlete => {
+                            const latestStat = statsData.find(s => s.athlete_id === athlete.id);
+                            return { ...athlete, last_score: latestStat ? latestStat.points : 0 };
+                        });
+                    }
+                }
+                
+                set({ athletes: enrichedAthletes, loading: false });
+            }
         } catch (err) {
             set({ error: err.message, loading: false });
         }
@@ -829,11 +851,17 @@ export const useStore = create((set, get) => ({
 
     // Update stats/points with league context
     saveStats: async (stats) => {
-        const { currentLeagueId, activeRoundId } = get();
+        const { currentLeagueId, activeRoundId, athletes } = get();
         if (!currentLeagueId) return { error: "No league selected" };
 
         set({ loading: true });
-        const payload = { ...stats, round_id: activeRoundId, league_id: currentLeagueId };
+        
+        // Find the athlete's position to calculate points correctly
+        const athlete = athletes.find(a => a.id === stats.athlete_id);
+        const position = athlete ? athlete.pos : 'ALA';
+        
+        const finalPoints = calculateScore(stats, position, false); // False for not a captain in this context (it's base data)
+        const payload = { ...stats, points: finalPoints, round_id: activeRoundId, league_id: currentLeagueId };
 
         const { data, error } = await supabase
             .from('match_stats')
