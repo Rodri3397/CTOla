@@ -28,10 +28,13 @@ const LeagueDetail = () => {
     } = useStore();
 
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('users'); // 'users', 'teams', 'info'
-    const [timeFilter, setTimeFilter] = useState('TOTAL'); // 'TOTAL', 'MONTH', 'ROUND'
+    const [activeTab, setActiveTab] = useState('fantasy'); // 'fantasy', 'athletes', 'clubs', 'info'
+    const [timeFilter, setTimeFilter] = useState('MONTH'); // 'TOTAL', 'MONTH', 'ROUND'
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedRoundId, setSelectedRoundId] = useState(null);
+    const [availableRounds, setAvailableRounds] = useState([]);
     const [userLeaderboard, setUserLeaderboard] = useState([]);
+    const [athleteLeaderboard, setAthleteLeaderboard] = useState([]);
     const [teamLeaderboard, setTeamLeaderboard] = useState([]);
 
     const league = myFollowedLeaguesDetails.find(l => l.id === id);
@@ -43,64 +46,148 @@ const LeagueDetail = () => {
             if (currentLeagueId !== id) {
                 setCurrentLeague(id);
             }
+            fetchRounds();
+        }
+    }, [id, supabase]);
+
+    useEffect(() => {
+        if (id && supabase) {
             loadData();
         }
-    }, [id, timeFilter, selectedMonth, activeRoundId, supabase]);
+    }, [id, timeFilter, selectedMonth, selectedRoundId, supabase]);
+
+    const fetchRounds = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('rounds')
+                .select('*')
+                .eq('league_id', id)
+                .order('number', { ascending: false });
+            
+            if (error) throw error;
+            setAvailableRounds(data || []);
+            if (data?.length > 0 && !selectedRoundId) {
+                // Default to active or latest round
+                const active = data.find(r => r.status === 'open') || data[0];
+                setSelectedRoundId(active.id);
+            }
+        } catch (err) {
+            console.error('Error fetching rounds:', err);
+        }
+    };
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const squads = await fetchLeaderboard();
-            const { data: allStats, error: statsError } = await supabase
-                .from('match_stats')
-                .select('*')
-                .eq('league_id', id);
-
+            // 1. Fetch Stats based on filter
+            let query = supabase.from('match_stats').select('*').eq('league_id', id);
+            
+            if (timeFilter === 'ROUND' && selectedRoundId) {
+                query = query.eq('round_id', selectedRoundId);
+            }
+            
+            const { data: statsData, error: statsError } = await query;
             if (statsError) throw statsError;
 
-            let filteredStats = allStats || [];
+            let filteredStats = statsData || [];
             if (timeFilter === 'MONTH') {
                 filteredStats = filteredStats.filter(s => new Date(s.created_at).getMonth() === selectedMonth);
-            } else if (timeFilter === 'ROUND') {
-                filteredStats = filteredStats.filter(s => s.round_id === activeRoundId);
             }
 
+            // 2. Athlete Leaderboard Calculation
+            const { data: athletesInfo } = await supabase.from('athletes').select('id, name, pos, team_id');
+            const athleteMap = {};
+            
+            filteredStats.forEach(st => {
+                const athlete = athletesInfo?.find(a => a.id === st.athlete_id);
+                if (athlete) {
+                    if (!athleteMap[st.athlete_id]) {
+                        athleteMap[st.athlete_id] = {
+                            id: st.athlete_id,
+                            name: athlete.name,
+                            pos: athlete.pos,
+                            points: 0
+                        };
+                    }
+                    athleteMap[st.athlete_id].points += Number(st.points || 0);
+                }
+            });
+
+            setAthleteLeaderboard(Object.values(athleteMap).sort((a, b) => b.points - a.points));
+
+            // 3. Fantasy Team Leaderboard
+            // Fetch squad history for the period
+            let squadQuery = supabase.from('user_squads').select(`
+                *,
+                profiles:user_id (name, avatar_url),
+                league_members:league_id, user_id (team_name)
+            `).eq('league_id', id);
+
+            if (timeFilter === 'ROUND' && selectedRoundId) {
+                squadQuery = squadQuery.eq('round_id', selectedRoundId);
+            }
+
+            const { data: squads, error: squadError } = await squadQuery;
+            if (squadError) throw squadError;
+
             const userPointsMap = {};
+            
+            // To properly calculate Fantasy points across MONTH or TOTAL, 
+            // we need to sum their points in each round of that period.
+            // Note: user_squads already stores 'points' for that round.
+            
             squads.forEach(s => {
                 const userId = s.user_id;
+                
+                // If filter is MONTH, we must double check the round's date or the squad's created_at
+                if (timeFilter === 'MONTH') {
+                    if (new Date(s.created_at).getMonth() !== selectedMonth) return;
+                }
+
                 if (!userPointsMap[userId]) {
+                    // Find actual team name from league_members if available
+                    // The join might be tricky, fallback to profile name
+                    const memberData = s.league_members?.[0] || {};
                     userPointsMap[userId] = {
-                        name: s.profiles?.name || 'Inominado',
+                        team_name: s.league_members?.team_name || 'Meu Time', 
+                        user_name: s.profiles?.name || 'Comandante',
                         avatar: s.profiles?.avatar_url,
                         points: 0
                     };
                 }
-
-                const sRoundStats = filteredStats.filter(st => st.round_id === s.round_id);
-                Object.entries(s.squad_data || {}).forEach(([slot, athleteId]) => {
-                    const stats = sRoundStats.find(st => st.athlete_id === athleteId);
-                    if (stats) {
-                        const isCaptain = s.captain_id === athleteId;
-                        const pos = slot === 'goleiro' ? 'GOLEIRO' : slot === 'fixo' ? 'FIXO' : 'LINE';
-                        userPointsMap[userId].points += calculateScore(stats, pos, isCaptain);
-                    }
-                });
+                userPointsMap[userId].points += Number(s.points || 0);
             });
 
-            setUserLeaderboard(Object.values(userPointsMap).sort((a, b) => b.points - a.points));
+            // Fallback for team names: fetch league_members explicitly if joined select failed
+            const { data: members } = await supabase.from('league_members').select('user_id, team_name').eq('league_id', id);
+            Object.values(userPointsMap).forEach(up => {
+                const profile = squads.find(s => s.profiles?.name === up.user_name)?.profiles;
+                const m = members?.find(mb => mb.user_id === squads.find(s => s.user_id === squads.find(sq => sq.profiles?.name === up.user_name)?.user_id)?.user_id);
+                // Simple logic: update with team_name from members list
+            });
+            
+            // Re-refining the mapping for clarity
+            const finalFantasyRanking = Object.entries(userPointsMap).map(([uid, data]) => {
+                const member = members?.find(m => m.user_id === uid);
+                return {
+                    ...data,
+                    team_name: member?.team_name || data.team_name
+                };
+            });
 
+            setUserLeaderboard(finalFantasyRanking.sort((a, b) => b.points - a.points));
+
+            // 4. Club Leaderboard
+            const { data: leagueTeams } = await supabase.from('teams').select('*').eq('league_id', id);
             const teamPointsMap = {};
-            teams.forEach(t => {
+            leagueTeams?.forEach(t => {
                 teamPointsMap[t.id] = { name: t.name, points: 0 };
             });
 
-            const { data: athletesData } = await supabase.from('athletes').select('id, team_id, pos');
-
             filteredStats.forEach(st => {
-                const athlete = athletesData?.find(a => a.id === st.athlete_id);
+                const athlete = athletesInfo?.find(a => a.id === st.athlete_id);
                 if (athlete && teamPointsMap[athlete.team_id]) {
-                    const pos = athlete.pos || 'LINE';
-                    teamPointsMap[athlete.team_id].points += calculateScore(st, pos, false);
+                    teamPointsMap[athlete.team_id].points += Number(st.points || 0);
                 }
             });
 
@@ -165,38 +252,55 @@ const LeagueDetail = () => {
                     </motion.button>
                 )}
 
-                <div className="flex gap-2 p-1.5 bg-deep-charcoal rounded-[2rem] border border-white/5">
-                    <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={Users} label="Ranking" />
-                    <TabButton active={activeTab === 'teams'} onClick={() => setActiveTab('teams')} icon={Shield} label="Clubes" />
+                <div className="flex gap-2 p-1.5 bg-deep-charcoal rounded-[2rem] border border-white/5 overflow-x-auto no-scrollbar">
+                    <TabButton active={activeTab === 'fantasy'} onClick={() => setActiveTab('fantasy')} icon={Users} label="Times" />
+                    <TabButton active={activeTab === 'athletes'} onClick={() => setActiveTab('athletes')} icon={Trophy} label="Atletas" />
+                    <TabButton active={activeTab === 'clubs'} onClick={() => setActiveTab('clubs')} icon={Shield} label="Clubes" />
                     <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')} icon={Info} label="Info" />
                 </div>
             </header>
 
-            {(activeTab === 'users' || activeTab === 'teams') && (
+            {(activeTab !== 'info') && (
                 <section className="flex flex-col gap-6 px-1">
-                    <div className="flex items-center justify-between bg-deep-charcoal p-4 rounded-[2rem] border border-white/5 shadow-2xl">
+                    <div className="flex items-center justify-between bg-deep-charcoal p-4 rounded-[2rem] border border-white/5 shadow-2xl overflow-x-auto no-scrollbar gap-4">
                         <div className="flex gap-2">
                             {['TOTAL', 'MONTH', 'ROUND'].map(f => (
                                 <button
                                     key={f}
                                     onClick={() => setTimeFilter(f)}
-                                    className={`px-5 py-2.5 rounded-[1.2rem] text-[8px] font-black uppercase tracking-widest transition-all ${timeFilter === f ? 'bg-volt text-black shadow-glow' : 'text-gray-600 hover:text-white'}`}
+                                    className={`px-5 py-2.5 rounded-[1.2rem] text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${timeFilter === f ? 'bg-volt text-black shadow-glow' : 'text-gray-600 hover:text-white'}`}
                                 >
                                     {f === 'TOTAL' ? 'Geral' : f === 'MONTH' ? 'Mês' : 'Rodada'}
                                 </button>
                             ))}
                         </div>
-                        {timeFilter === 'MONTH' && (
-                            <select
-                                value={selectedMonth}
-                                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                                className="bg-transparent text-[9px] font-black uppercase text-volt outline-none border-b-2 border-volt/30 pb-1 pr-2 tracking-widest"
-                            >
-                                {months.map((m, i) => (
-                                    <option key={i} value={i} className="bg-black text-white">{m}</option>
-                                ))}
-                            </select>
-                        )}
+                        
+                        <div className="flex items-center gap-3">
+                            {timeFilter === 'MONTH' && (
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                                    className="bg-transparent text-[9px] font-black uppercase text-volt outline-none border-b-2 border-volt/30 pb-1 pr-2 tracking-widest"
+                                >
+                                    {months.map((m, i) => (
+                                        <option key={i} value={i} className="bg-black text-white">{m}</option>
+                                    ))}
+                                </select>
+                            )}
+
+                            {timeFilter === 'ROUND' && (
+                                <select
+                                    value={selectedRoundId || ''}
+                                    onChange={(e) => setSelectedRoundId(e.target.value)}
+                                    className="bg-transparent text-[9px] font-black uppercase text-volt outline-none border-b-2 border-volt/30 pb-1 pr-2 tracking-widest"
+                                >
+                                    {availableRounds.map((r, i) => (
+                                        <option key={r.id} value={r.id} className="bg-black text-white">Rodada {r.number}</option>
+                                    ))}
+                                    {availableRounds.length === 0 && <option value="" className="bg-black text-white">Nenhuma rodada</option>}
+                                </select>
+                            )}
+                        </div>
                     </div>
 
                     {loading ? (
@@ -207,9 +311,9 @@ const LeagueDetail = () => {
                     ) : (
                         <div className="flex flex-col gap-4">
                             <AnimatePresence mode="popLayout">
-                                {(activeTab === 'users' ? userLeaderboard : teamLeaderboard).map((item, idx) => (
+                                {(activeTab === 'fantasy' ? userLeaderboard : activeTab === 'athletes' ? athleteLeaderboard : teamLeaderboard).map((item, idx) => (
                                     <motion.div
-                                        key={`${activeTab}-${item.name}-${idx}`}
+                                        key={`${activeTab}-${item.name || item.team_name}-${idx}`}
                                         layout
                                         initial={{ opacity: 0, scale: 0.95 }}
                                         animate={{ opacity: 1, scale: 1 }}
@@ -220,28 +324,32 @@ const LeagueDetail = () => {
                                                 {idx + 1}
                                             </div>
                                             <div className={`w-12 h-12 rounded-2xl bg-black border border-white/5 flex items-center justify-center overflow-hidden shadow-2xl transition-transform group-hover:scale-105 ${idx < 3 ? 'border-volt/20' : ''}`}>
-                                                {activeTab === 'users' ? (
-                                                    item.avatar ? <img src={item.avatar} className="w-full h-full object-cover" alt={item.name} /> : <Users size={20} className="text-gray-700" />
+                                                {activeTab === 'fantasy' ? (
+                                                    item.avatar ? <img src={item.avatar} className="w-full h-full object-cover" alt={item.team_name} /> : <Users size={20} className="text-gray-700" />
+                                                ) : activeTab === 'athletes' ? (
+                                                    <div className="bg-volt/5 w-full h-full flex items-center justify-center text-volt font-black text-[10px] italic">{item.pos?.substring(0, 3)}</div>
                                                 ) : (
                                                     <Shield size={20} className="text-volt opacity-50" />
                                                 )}
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-sm font-bebas italic text-white uppercase tracking-tight leading-none">{item.name}</span>
+                                                <span className="text-sm font-bebas italic text-white uppercase tracking-tight leading-none">
+                                                    {activeTab === 'fantasy' ? item.team_name : item.name}
+                                                </span>
                                                 <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest leading-none">
-                                                    {activeTab === 'users' ? 'COMANDANTE' : 'CLUBE DA LIGA'}
+                                                    {activeTab === 'fantasy' ? `COMANDANTE: ${item.user_name}` : activeTab === 'athletes' ? `POSIÇÃO: ${item.pos}` : 'CLUBE DA LIGA'}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-2xl font-bebas italic text-volt leading-none">{item.points.toFixed(idx === 0 ? 1 : 1)}</div>
+                                            <div className="text-2xl font-bebas italic text-volt leading-none">{item.points.toFixed(1)}</div>
                                             <span className="text-[7px] font-black text-gray-700 uppercase tracking-[0.2em] mt-1 block">PONTOS</span>
                                         </div>
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
 
-                            {userLeaderboard.length === 0 && (
+                            {(activeTab === 'fantasy' ? userLeaderboard : activeTab === 'athletes' ? athleteLeaderboard : teamLeaderboard).length === 0 && (
                                 <div className="py-24 text-center flex flex-col items-center gap-6 opacity-20">
                                     <Activity size={48} />
                                     <p className="text-[10px] font-black uppercase tracking-widest">Nenhum registro encontrado nesta arena</p>
@@ -272,8 +380,8 @@ const LeagueDetail = () => {
                             </div>
                             <div className="bg-black/40 p-8 rounded-[2.5rem] border border-white/5 flex flex-col gap-2">
                                 <Trophy size={20} className="text-volt opacity-50 mb-2" />
-                                <span className="text-[9px] font-black uppercase text-gray-600 tracking-widest">Premiação</span>
-                                <span className="text-3xl font-bebas italic text-white">---</span>
+                                <span className="text-[9px] font-black uppercase text-gray-600 tracking-widest">Rodadas</span>
+                                <span className="text-3xl font-bebas italic text-white">{availableRounds.length}</span>
                             </div>
                         </div>
 
