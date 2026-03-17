@@ -64,7 +64,7 @@ const MyTeam = () => {
     const handleSelectAthlete = (athlete) => {
         const newDraft = { ...draftSquad, [drawer.slot]: athlete.id };
         setDraftSquad(newDraft);
-        if (drawer.slot === 'line3' || !draftCaptainId) {
+        if (!draftCaptainId) {
             setDraftCaptain(athlete.id);
         }
     };

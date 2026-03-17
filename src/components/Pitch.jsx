@@ -74,7 +74,7 @@ export default function Pitch({ squad, onSetCaptain, onSelectSlot, captainId }) 
                     <div className="flex flex-col justify-between h-full py-4 relative z-10">
                         <div className="flex justify-center"><PitchSlot athlete={squad.goleiro} label="Goleiro" position="GOLEIRO" onSelect={() => onSelectSlot('goleiro', 'GOLEIRO')} /></div>
                         <div className="flex justify-center"><PitchSlot athlete={squad.fixo} label="Fixo" position="FIXO" onSelect={() => onSelectSlot('fixo', 'FIXO')} /></div>
-                        <div className="flex justify-center gap-16"><PitchSlot athlete={squad.line3} label="Ala Esq." position="ALA" onSelect={() => onSelectSlot('line3', 'ALA')} /><PitchSlot athlete={squad.line4} label="Ala Dir." position="ALA" onSelect={() => onSelectSlot('line4', 'ALA')} /></div>
+                        <div className="flex justify-center gap-16"><PitchSlot athlete={squad.line3} label="Ala 1" position="ALA" onSelect={() => onSelectSlot('line3', 'ALA')} /><PitchSlot athlete={squad.line4} label="Ala 2" position="ALA" onSelect={() => onSelectSlot('line4', 'ALA')} /></div>
                         <div className="flex justify-center mb-8"><PitchSlot athlete={squad.line5} label="Pivô" position="PIVO" onSelect={() => onSelectSlot('line5', 'PIVO')} /></div>
                         <ReserveSlot />
                     </div>
@@ -84,10 +84,10 @@ export default function Pitch({ squad, onSetCaptain, onSelectSlot, captainId }) 
                     <div className="flex flex-col justify-between h-full py-4 relative z-10">
                         <div className="flex justify-center"><PitchSlot athlete={squad.goleiro} label="Goleiro" position="GOLEIRO" onSelect={() => onSelectSlot('goleiro', 'GOLEIRO')} /></div>
                         <div className="grid grid-cols-2 gap-y-12 gap-x-8 px-4 mt-8">
-                             <PitchSlot athlete={squad.fixo} label="Linha 1" position="FIXO" onSelect={() => onSelectSlot('fixo', 'FIXO')} />
-                             <PitchSlot athlete={squad.line3} label="Linha 2" position="ALA" onSelect={() => onSelectSlot('line3', 'ALA')} />
-                             <PitchSlot athlete={squad.line4} label="Linha 3" position="ALA" onSelect={() => onSelectSlot('line4', 'ALA')} />
-                             <PitchSlot athlete={squad.line5} label="Linha 4" position="PIVO" onSelect={() => onSelectSlot('line5', 'PIVO')} />
+                             <PitchSlot athlete={squad.fixo} label="Fixo" position="FIXO" onSelect={() => onSelectSlot('fixo', 'FIXO')} />
+                             <PitchSlot athlete={squad.line3} label="Ala 1" position="ALA" onSelect={() => onSelectSlot('line3', 'ALA')} />
+                             <PitchSlot athlete={squad.line4} label="Ala 2" position="ALA" onSelect={() => onSelectSlot('line4', 'ALA')} />
+                             <PitchSlot athlete={squad.line5} label="Pivô" position="PIVO" onSelect={() => onSelectSlot('line5', 'PIVO')} />
                         </div>
                         <ReserveSlot />
                     </div>
@@ -96,8 +96,8 @@ export default function Pitch({ squad, onSetCaptain, onSelectSlot, captainId }) 
                 return (
                     <div className="flex flex-col justify-between h-full py-4 relative z-10">
                         <div className="flex justify-center"><PitchSlot athlete={squad.goleiro} label="Goleiro" position="GOLEIRO" onSelect={() => onSelectSlot('goleiro', 'GOLEIRO')} /></div>
-                        <div className="flex justify-around mt-4"><PitchSlot athlete={squad.fixo} label="Defesa Esq." position="FIXO" onSelect={() => onSelectSlot('fixo', 'FIXO')} /><PitchSlot athlete={squad.line3} label="Defesa Dir." position="ALA" onSelect={() => onSelectSlot('line3', 'ALA')} /></div>
-                        <div className="flex justify-around mb-12"><PitchSlot athlete={squad.line4} label="Ataque Esq." position="ALA" onSelect={() => onSelectSlot('line4', 'ALA')} /><PitchSlot athlete={squad.line5} label="Ataque Dir." position="PIVO" onSelect={() => onSelectSlot('line5', 'PIVO')} /></div>
+                        <div className="flex justify-around mt-4"><PitchSlot athlete={squad.fixo} label="Fixo" position="FIXO" onSelect={() => onSelectSlot('fixo', 'FIXO')} /><PitchSlot athlete={squad.line3} label="Ala 1" position="ALA" onSelect={() => onSelectSlot('line3', 'ALA')} /></div>
+                        <div className="flex justify-around mb-12"><PitchSlot athlete={squad.line4} label="Ala 2" position="ALA" onSelect={() => onSelectSlot('line4', 'ALA')} /><PitchSlot athlete={squad.line5} label="Pivô" position="PIVO" onSelect={() => onSelectSlot('line5', 'PIVO')} /></div>
                         <ReserveSlot />
                     </div>
                 );

@@ -104,6 +104,10 @@ export default function Market() {
                             <span className={`text-[9px] font-black uppercase tracking-widest ${isMarketOpen ? 'text-volt' : 'text-electric-crimson'}`}>
                                 {isMarketOpen ? 'NEGOCIAÇÕES ABERTAS' : 'MERCADO FECHADO'}
                             </span>
+                            <div className="w-1 h-1 rounded-full bg-white/5 mx-1" />
+                            <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">
+                                VALORIZAÇÃO NESTA LIGA
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -156,7 +160,7 @@ export default function Market() {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.03 }}
-                                    className="bg-deep-charcoal/40 p-6 rounded-[2.5rem] border border-white/5 flex items-center justify-between group hover:bg-black/60 transition-all shadow-xl relative overflow-hidden"
+                                    className="bg-deep-charcoal/40 p-4 rounded-[2.5rem] border border-white/5 flex items-center justify-between group hover:bg-black/60 transition-all shadow-xl relative overflow-hidden"
                                 >
                                     <div className="flex items-center gap-5">
                                         <div className="w-16 h-16 rounded-2xl bg-black border border-white/5 flex items-center justify-center text-3xl group-hover:scale-105 transition-transform shadow-inner relative">
@@ -191,8 +195,8 @@ export default function Market() {
 
                                     <div className="flex flex-col items-end gap-3">
                                         <div className="flex flex-col items-end">
-                                            <span className="text-2xl font-bebas text-white italic leading-none">C$ {athlete.price?.toFixed(1)}</span>
-                                            <span className="text-[8px] font-black text-gray-800 uppercase mt-1">VALOR</span>
+                                            <span className="text-xl font-bebas text-white italic leading-none">C$ {athlete.price?.toFixed(1)}</span>
+                                            <span className="text-[7px] font-black text-gray-800 uppercase mt-0.5 tracking-tighter">VALOR</span>
                                         </div>
                                         
                                         <motion.button
@@ -203,7 +207,7 @@ export default function Market() {
                                                     addToDraftSquad(athlete);
                                                 }
                                             }}
-                                            className={`px-6 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                                            className={`px-5 py-2.5 rounded-2xl text-[8px] font-black uppercase tracking-widest transition-all ${
                                                 isHired 
                                                 ? 'bg-volt/10 text-volt border border-volt/20 cursor-default' 
                                                 : isMarketOpen 
