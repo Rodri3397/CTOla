@@ -10,7 +10,11 @@ export default function AthleteDrawer({ isOpen, onClose, position, onSelect, cur
 
     const filteredAthletes = useMemo(() => {
         return athletes
-            .filter(a => a.league_id === currentLeagueId && a.pos === position)
+            .filter(a => a.league_id === currentLeagueId)
+            .filter(a => {
+                if (position === 'LINHA') return ['FIXO', 'ALA', 'PIVO'].includes(a.pos);
+                return a.pos === position;
+            })
             .filter(a => a.name.toLowerCase().includes(search.toLowerCase()))
             .sort((a, b) => sortBy === 'price' ? b.price - a.price : b.last_score - a.last_score);
     }, [athletes, position, search, sortBy, currentLeagueId]);

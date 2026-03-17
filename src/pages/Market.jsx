@@ -69,6 +69,18 @@ export default function Market() {
             });
     }, [athletes, search, filterPos, sortBy]);
 
+    const squadObjects = useMemo(() => {
+        const obj = {};
+        Object.entries(draftSquad).forEach(([slot, id]) => {
+            obj[slot] = athletes.find(a => String(a.id) === String(id)) || null;
+        });
+        return obj;
+    }, [draftSquad, athletes]);
+
+    const totalCost = Object.values(squadObjects).reduce((acc, curr) => acc + (curr?.price || 0), 0);
+    const patrimony = 100.0;
+    const balance = patrimony - totalCost;
+
     if (!currentLeagueId) {
         return (
             <div className="flex flex-col items-center justify-center py-20 px-8 text-center animate-fade-in">
@@ -91,6 +103,22 @@ export default function Market() {
 
     return (
         <div className="flex flex-col gap-8 pb-36 animate-fade-in">
+            {/* Budget Bar - consistent with MyTeam */}
+            <div className="grid grid-cols-3 gap-3 px-2">
+                <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center bg-black/40">
+                    <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Patrimônio</span>
+                    <span className="text-base font-bebas text-white">C$ {patrimony.toFixed(1)}</span>
+                </div>
+                <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center border-volt/20 bg-volt/5">
+                    <span className="text-[7px] font-black text-volt/60 uppercase tracking-widest">Custo</span>
+                    <span className="text-base font-bebas text-volt">C$ {totalCost.toFixed(1)}</span>
+                </div>
+                <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center bg-black/40">
+                    <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Saldo</span>
+                    <span className={`text-base font-bebas ${balance < 0 ? 'text-electric-crimson' : 'text-white'}`}>C$ {balance.toFixed(1)}</span>
+                </div>
+            </div>
+
             <header className="px-1 flex flex-col gap-6">
                 <div className="flex justify-between items-end">
                     <div className="flex flex-col">

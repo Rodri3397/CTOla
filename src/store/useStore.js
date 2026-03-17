@@ -16,8 +16,9 @@ export const useStore = create((set, get) => ({
     isValidUUID: (id) => id && id.length > 30 && id !== 'null' && id !== 'undefined',
     myFollowedLeagues: [],
     myFollowedLeaguesDetails: [],
-    draftSquad: JSON.parse(localStorage.getItem('ctola_draft_squad') || '{}'),
+    draftSquad: JSON.parse(localStorage.getItem('ctola_draft_squad') || '{"goleiro":null,"fixo":null,"ala1":null,"ala2":null,"pivo1":null,"pivo2":null}'),
     draftCaptainId: localStorage.getItem('ctola_draft_captain') || null,
+    wallet: 100.0, // Default wallet value if profile not loaded
     leagueMembers: [], // Members of the currently active league for management
     feed: [],
     notification: null, // { message: '', type: 'success' | 'error' }
@@ -493,14 +494,18 @@ export const useStore = create((set, get) => ({
 
         // Auto-assign slot based on position
         let slot = null;
-        if (athlete.pos === 'GOLEIRO') slot = 'goleiro';
-        else if (athlete.pos === 'FIXO') slot = 'fixo';
-        else {
-            // Fill line3, line4, line5, line6
-            if (!draftSquad.line3) slot = 'line3';
-            else if (!draftSquad.line4) slot = 'line4';
-            else if (!draftSquad.line5) slot = 'line5';
-            else if (!draftSquad.line6) slot = 'line6';
+        if (athlete.pos === 'GOLEIRO') {
+            if (!draftSquad.goleiro) slot = 'goleiro';
+        } else if (athlete.pos === 'FIXO') {
+            if (!draftSquad.fixo) slot = 'fixo';
+            else if (!draftSquad.pivo2) slot = 'pivo2';
+        } else if (athlete.pos === 'ALA') {
+            if (!draftSquad.ala1) slot = 'ala1';
+            else if (!draftSquad.ala2) slot = 'ala2';
+            else if (!draftSquad.pivo2) slot = 'pivo2';
+        } else if (athlete.pos === 'PIVO') {
+            if (!draftSquad.pivo1) slot = 'pivo1';
+            else if (!draftSquad.pivo2) slot = 'pivo2';
         }
 
         if (slot) {

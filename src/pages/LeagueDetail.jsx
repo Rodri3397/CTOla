@@ -29,7 +29,7 @@ const LeagueDetail = () => {
 
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('fantasy'); // 'fantasy', 'athletes', 'clubs', 'info'
-    const [timeFilter, setTimeFilter] = useState('MONTH'); // 'TOTAL', 'MONTH', 'ROUND'
+    const [timeFilter, setTimeFilter] = useState('TOTAL'); // 'TOTAL', 'MONTH', 'ROUND'
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedRoundId, setSelectedRoundId] = useState(null);
     const [availableRounds, setAvailableRounds] = useState([]);
@@ -67,9 +67,8 @@ const LeagueDetail = () => {
             if (error) throw error;
             setAvailableRounds(data || []);
             if (data?.length > 0 && !selectedRoundId) {
-                // Default to active or latest round
-                const active = data.find(r => r.status === 'open') || data[0];
-                setSelectedRoundId(active.id);
+                // Default to latest round
+                setSelectedRoundId(data[0].id);
             }
         } catch (err) {
             console.error('Error fetching rounds:', err);
@@ -79,6 +78,12 @@ const LeagueDetail = () => {
     const loadData = async () => {
         setLoading(true);
         try {
+            // Safety check for round filter
+            if (timeFilter === 'ROUND' && !selectedRoundId) {
+                setLoading(false);
+                return;
+            }
+
             // 1. Fetch Stats based on filter
             let query = supabase.from('match_stats').select('*').eq('league_id', id);
             
@@ -95,7 +100,11 @@ const LeagueDetail = () => {
             }
 
             // 2. Athlete Leaderboard Calculation
-            const { data: athletesInfo } = await supabase.from('athletes').select('id, name, pos, team_id');
+            const { data: athletesInfo } = await supabase
+                .from('athletes')
+                .select('id, name, pos, team_id')
+                .eq('league_id', id);
+
             const athleteMap = {};
             
             filteredStats.forEach(st => {
@@ -115,6 +124,13 @@ const LeagueDetail = () => {
 
             setAthleteLeaderboard(Object.values(athleteMap).sort((a, b) => b.points - a.points));
 
+            // Athlete Points Map for Round-specific calculation
+            const athletePointsByRound = {};
+            (statsData || []).forEach(st => {
+                if (!athletePointsByRound[st.round_id]) athletePointsByRound[st.round_id] = {};
+                athletePointsByRound[st.round_id][st.athlete_id] = Number(st.points || 0);
+            });
+
             // 3. Fantasy Team Leaderboard
             let squadQuery = supabase.from('user_squads').select(`
                 *,
@@ -128,35 +144,44 @@ const LeagueDetail = () => {
             const { data: squads, error: squadError } = await squadQuery;
             if (squadError) throw squadError;
 
+            const { data: members } = await supabase.from('league_members').select('user_id, team_name').eq('league_id', id);
+            
             const userPointsMap = {};
+            (members || []).forEach(m => {
+                userPointsMap[m.user_id] = {
+                    team_name: m.team_name || 'Meu Time', 
+                    user_name: 'Comandante',
+                    avatar: null,
+                    points: 0
+                };
+            });
+
             (squads || []).forEach(s => {
                 const userId = s.user_id;
+                if (!userPointsMap[userId]) return;
+
+                if (s.profiles) {
+                    userPointsMap[userId].user_name = s.profiles.name || userPointsMap[userId].user_name;
+                    userPointsMap[userId].avatar = s.profiles.avatar_url || userPointsMap[userId].avatar;
+                }
+
                 if (timeFilter === 'MONTH') {
                     if (new Date(s.created_at).getMonth() !== selectedMonth) return;
                 }
 
-                if (!userPointsMap[userId]) {
-                    userPointsMap[userId] = {
-                        team_name: 'Meu Time', 
-                        user_name: s.profiles?.name || 'Comandante',
-                        avatar: s.profiles?.avatar_url,
-                        points: 0
-                    };
+                const roundPoints = athletePointsByRound[s.round_id] || {};
+                let squadTotal = 0;
+                if (s.squad_data) {
+                    Object.values(s.squad_data).forEach(athleteId => {
+                        let pts = roundPoints[athleteId] || 0;
+                        if (String(athleteId) === String(s.captain_id)) pts *= 2;
+                        squadTotal += pts;
+                    });
                 }
-                userPointsMap[userId].points += Number(s.points || 0);
+                userPointsMap[userId].points += squadTotal;
             });
 
-            const { data: members } = await supabase.from('league_members').select('user_id, team_name').eq('league_id', id);
-            
-            const finalFantasyRanking = Object.entries(userPointsMap).map(([uid, data]) => {
-                const member = members?.find(m => m.user_id === uid);
-                return {
-                    ...data,
-                    team_name: member?.team_name || data.team_name
-                };
-            });
-
-            setUserLeaderboard(finalFantasyRanking.sort((a, b) => b.points - a.points));
+            setUserLeaderboard(Object.values(userPointsMap).sort((a, b) => b.points - a.points));
 
             // 4. Club Leaderboard
             const { data: leagueTeams } = await supabase.from('teams').select('*').eq('league_id', id);
