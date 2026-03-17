@@ -30,6 +30,7 @@ const MyTeam = () => {
 
     const currentLeagueMember = myFollowedLeaguesDetails.find(l => l.id === currentLeagueId);
     const hasTeamName = !!currentLeagueMember?.team_name;
+    const isLeagueAdmin = currentLeagueMember?.role === 'OWNER' || currentLeagueMember?.role === 'ADMIN' || currentLeagueMember?.user_role === 'OWNER';
 
     useEffect(() => {
         if (currentLeagueId) {
@@ -162,7 +163,15 @@ const MyTeam = () => {
             </header>
 
             <div className="px-1 -mt-2">
-                <RoundSelector />
+                <RoundSelector isAdmin={isLeagueAdmin} />
+                {rounds.length === 0 && (
+                    <div className="mt-4 p-6 glass-premium border-volt/20 rounded-3xl text-center">
+                        <p className="text-[10px] font-black text-volt uppercase tracking-widest">Nenhuma Rodada Criada</p>
+                        <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                           {isLeagueAdmin ? 'Clique no + acima para criar a primeira rodada.' : 'Aguarde o administrador iniciar o campeonato.'}
+                        </p>
+                    </div>
+                )}
             </div>
 
             <Pitch

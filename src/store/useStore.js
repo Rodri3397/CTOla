@@ -612,8 +612,6 @@ export const useStore = create((set, get) => ({
                 if (local) set({ rounds: JSON.parse(local) });
             }
 
-            // Default to last round if none selected
-            const currentRounds = get().rounds;
             // Default to last round if none selected OR last selection is invalid
             const currentRounds = get().rounds;
             if (currentRounds.length > 0) {
