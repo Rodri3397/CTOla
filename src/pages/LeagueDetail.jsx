@@ -116,7 +116,6 @@ const LeagueDetail = () => {
             setAthleteLeaderboard(Object.values(athleteMap).sort((a, b) => b.points - a.points));
 
             // 3. Fantasy Team Leaderboard
-            // Fetch squad history for the period
             let squadQuery = supabase.from('user_squads').select(`
                 *,
                 profiles:user_id (name, avatar_url)
@@ -130,25 +129,15 @@ const LeagueDetail = () => {
             if (squadError) throw squadError;
 
             const userPointsMap = {};
-            
-            // To properly calculate Fantasy points across MONTH or TOTAL, 
-            // we need to sum their points in each round of that period.
-            // Note: user_squads already stores 'points' for that round.
-            
-            squads.forEach(s => {
+            (squads || []).forEach(s => {
                 const userId = s.user_id;
-                
-                // If filter is MONTH, we must double check the round's date or the squad's created_at
                 if (timeFilter === 'MONTH') {
                     if (new Date(s.created_at).getMonth() !== selectedMonth) return;
                 }
 
                 if (!userPointsMap[userId]) {
-                    // Find actual team name from league_members if available
-                    // The join might be tricky, fallback to profile name
-                    const memberData = s.league_members?.[0] || {};
                     userPointsMap[userId] = {
-                        team_name: s.league_members?.team_name || 'Meu Time', 
+                        team_name: 'Meu Time', 
                         user_name: s.profiles?.name || 'Comandante',
                         avatar: s.profiles?.avatar_url,
                         points: 0
@@ -157,15 +146,8 @@ const LeagueDetail = () => {
                 userPointsMap[userId].points += Number(s.points || 0);
             });
 
-            // Fallback for team names: fetch league_members explicitly if joined select failed
             const { data: members } = await supabase.from('league_members').select('user_id, team_name').eq('league_id', id);
-            Object.values(userPointsMap).forEach(up => {
-                const profile = squads.find(s => s.profiles?.name === up.user_name)?.profiles;
-                const m = members?.find(mb => mb.user_id === squads.find(s => s.user_id === squads.find(sq => sq.profiles?.name === up.user_name)?.user_id)?.user_id);
-                // Simple logic: update with team_name from members list
-            });
             
-            // Re-refining the mapping for clarity
             const finalFantasyRanking = Object.entries(userPointsMap).map(([uid, data]) => {
                 const member = members?.find(m => m.user_id === uid);
                 return {
@@ -310,42 +292,59 @@ const LeagueDetail = () => {
                     ) : (
                         <div className="flex flex-col gap-4">
                             <AnimatePresence mode="popLayout">
-                                {(activeTab === 'fantasy' ? userLeaderboard : activeTab === 'athletes' ? athleteLeaderboard : teamLeaderboard).map((item, idx) => (
-                                    <motion.div
-                                        key={`${activeTab}-${item.name || item.team_name}-${idx}`}
-                                        layout
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        className={`bento-card p-5 flex items-center justify-between group transition-all ${idx === 0 ? 'border-volt/30 bg-volt/5 shadow-glow shadow-volt/5' : 'border-white/5 hover:border-white/20'}`}
-                                    >
-                                        <div className="flex items-center gap-5">
-                                            <div className={`text-xl font-bebas italic w-6 text-center ${idx < 3 ? 'text-volt' : 'text-gray-700'}`}>
-                                                {idx + 1}
+                                {(activeTab === 'fantasy' ? userLeaderboard : activeTab === 'athletes' ? athleteLeaderboard : teamLeaderboard).map((item, idx) => {
+                                    const isTop3 = idx < 3;
+                                    const rankColor = idx === 0 ? 'text-volt' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-700';
+                                    const posColors = {
+                                        'GOLEIRO': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                                        'FIXO': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+                                        'ALA': 'bg-volt/20 text-volt border-volt/30',
+                                        'PIVÔ': 'bg-red-500/20 text-red-400 border-red-500/30'
+                                    };
+                                    const posColorClass = posColors[item.pos?.toUpperCase()] || 'bg-white/5 text-gray-500 border-white/10';
+
+                                    return (
+                                        <motion.div
+                                            key={`${activeTab}-${item.name || item.team_name}-${idx}`}
+                                            layout
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.05 }}
+                                            className={`bento-card p-5 flex items-center justify-between group transition-all ${isTop3 ? 'border-volt/30 bg-volt/5 shadow-glow shadow-volt/5' : 'border-white/5 hover:border-white/20'}`}
+                                        >
+                                            <div className="flex items-center gap-5">
+                                                <div className={`text-xl font-bebas italic w-6 text-center ${rankColor}`}>
+                                                    {idx + 1}
+                                                </div>
+                                                <div className={`w-12 h-12 rounded-2xl bg-black border border-white/5 flex items-center justify-center overflow-hidden shadow-2xl transition-transform group-hover:scale-110 ${isTop3 ? 'border-volt/20' : ''}`}>
+                                                    {activeTab === 'fantasy' ? (
+                                                        item.avatar ? <img src={item.avatar} className="w-full h-full object-cover" alt={item.team_name} /> : <Users size={20} className="text-gray-700" />
+                                                    ) : activeTab === 'athletes' ? (
+                                                        <div className={`w-full h-full flex items-center justify-center font-black text-[9px] italic border-2 rounded-2xl ${posColorClass}`}>
+                                                            {item.pos?.substring(0, 3).toUpperCase()}
+                                                        </div>
+                                                    ) : (
+                                                        <Shield size={20} className="text-volt opacity-50" />
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className={`text-sm font-bebas italic text-white uppercase tracking-tight leading-none ${isTop3 ? 'text-volt' : ''}`}>
+                                                        {activeTab === 'fantasy' ? item.team_name : item.name}
+                                                    </span>
+                                                    <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest leading-none">
+                                                        {activeTab === 'fantasy' ? `COMANDANTE: ${item.user_name}` : activeTab === 'athletes' ? `EQUIPE: LIGA REAL` : 'CLUBE DA LIGA'}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className={`w-12 h-12 rounded-2xl bg-black border border-white/5 flex items-center justify-center overflow-hidden shadow-2xl transition-transform group-hover:scale-105 ${idx < 3 ? 'border-volt/20' : ''}`}>
-                                                {activeTab === 'fantasy' ? (
-                                                    item.avatar ? <img src={item.avatar} className="w-full h-full object-cover" alt={item.team_name} /> : <Users size={20} className="text-gray-700" />
-                                                ) : activeTab === 'athletes' ? (
-                                                    <div className="bg-volt/5 w-full h-full flex items-center justify-center text-volt font-black text-[10px] italic">{item.pos?.substring(0, 3)}</div>
-                                                ) : (
-                                                    <Shield size={20} className="text-volt opacity-50" />
-                                                )}
+                                            <div className="text-right">
+                                                <div className={`text-2xl font-bebas italic leading-none ${isTop3 ? 'text-volt' : 'text-white'}`}>
+                                                    {item.points.toFixed(1)}
+                                                </div>
+                                                <span className="text-[7px] font-black text-gray-700 uppercase tracking-[0.2em] mt-1 block">PTS</span>
                                             </div>
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-sm font-bebas italic text-white uppercase tracking-tight leading-none">
-                                                    {activeTab === 'fantasy' ? item.team_name : item.name}
-                                                </span>
-                                                <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest leading-none">
-                                                    {activeTab === 'fantasy' ? `COMANDANTE: ${item.user_name}` : activeTab === 'athletes' ? `POSIÇÃO: ${item.pos}` : 'CLUBE DA LIGA'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-2xl font-bebas italic text-volt leading-none">{item.points.toFixed(1)}</div>
-                                            <span className="text-[7px] font-black text-gray-700 uppercase tracking-[0.2em] mt-1 block">PONTOS</span>
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                        </motion.div>
+                                    );
+                                })}
                             </AnimatePresence>
 
                             {(activeTab === 'fantasy' ? userLeaderboard : activeTab === 'athletes' ? athleteLeaderboard : teamLeaderboard).length === 0 && (
