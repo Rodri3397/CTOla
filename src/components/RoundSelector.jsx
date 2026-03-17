@@ -19,12 +19,12 @@ export default function RoundSelector({ isAdmin = false }) {
                     <button
                         key={r.id}
                         onClick={() => setActiveRound(r.id)}
-                        className={`flex-shrink-0 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border
+                        className={`flex-shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border
                             ${activeRoundId === r.id
-                                ? 'bg-neon text-black border-neon shadow-[0_0_15px_rgba(0,245,255,0.3)]'
+                                ? 'bg-volt text-black border-volt shadow-[0_0_20px_rgba(223,255,0,0.4)] scale-105 z-10'
                                 : 'bg-white/5 text-gray-500 border-white/5 hover:border-white/10'}`}
                     >
-                        R{r.number}
+                        Rodada {r.number}
                     </button>
                 ))}
 

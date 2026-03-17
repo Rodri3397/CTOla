@@ -6,7 +6,7 @@ export const useStore = create((set, get) => ({
     teams: [],
     athletes: [],
     rounds: [],
-    activeRoundId: null,
+    activeRoundId: localStorage.getItem('ctola_active_round_id') || null,
     currentLeagueId: (() => {
         const id = localStorage.getItem('ctola_league_id');
         return (id && id !== 'null' && id !== 'undefined') ? id : null;
@@ -264,6 +264,7 @@ export const useStore = create((set, get) => ({
             
             // Refetch to ensure all components have the latest data
             await get().fetchMyFollowedLeagues();
+            await get().fetchMyLeagues(); // Also sync myLeagues state
             
             set({ loading: false });
             return { error: null };
@@ -613,8 +614,16 @@ export const useStore = create((set, get) => ({
 
             // Default to last round if none selected
             const currentRounds = get().rounds;
-            if (!get().activeRoundId && currentRounds.length > 0) {
-                set({ activeRoundId: currentRounds[currentRounds.length - 1].id });
+            // Default to last round if none selected OR last selection is invalid
+            const currentRounds = get().rounds;
+            if (currentRounds.length > 0) {
+                const storedRoundId = localStorage.getItem('ctola_active_round_id');
+                const exists = currentRounds.find(r => r.id === storedRoundId);
+                if (!exists) {
+                    const lastRoundId = currentRounds[currentRounds.length - 1].id;
+                    set({ activeRoundId: lastRoundId });
+                    localStorage.setItem('ctola_active_round_id', lastRoundId);
+                }
             }
         } catch (err) {
             console.error("Rounds error:", err);
@@ -652,11 +661,19 @@ export const useStore = create((set, get) => ({
                 rounds: [...state.rounds, data[0]],
                 activeRoundId: data[0].id
             }));
+            localStorage.setItem('ctola_active_round_id', data[0].id);
         }
         return { data, error };
     },
 
-    setActiveRound: (id) => set({ activeRoundId: id }),
+    setActiveRound: (id) => {
+        set({ activeRoundId: id });
+        if (id) {
+            localStorage.setItem('ctola_active_round_id', id);
+        } else {
+            localStorage.removeItem('ctola_active_round_id');
+        }
+    },
 
     // Fetch all athletes for current league
     fetchAthletes: async () => {

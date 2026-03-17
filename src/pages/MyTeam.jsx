@@ -33,12 +33,17 @@ const MyTeam = () => {
 
     useEffect(() => {
         if (currentLeagueId) {
+            useStore.getState().fetchMyFollowedLeagues(); // Force member data sync
             useStore.getState().fetchLeagueData();
             loadDbSquad();
         }
-    }, [currentLeagueId]);
+    }, [currentLeagueId, activeRoundId]); // Reload squad on round change too
 
     const loadDbSquad = async () => {
+        // Clear draft before loading from DB to avoid "ghosting" between rounds
+        setDraftSquad({});
+        setDraftCaptain(null);
+        
         const dbSquad = await fetchUserSquad();
         if (dbSquad) {
             setDraftSquad(dbSquad.squad_data || {});
@@ -51,7 +56,8 @@ const MyTeam = () => {
         setIsSaving(true);
         const { error } = await saveUserSquad(draftSquad, draftCaptainId);
         if (!error) {
-            alert('Escalação salva!');
+            // No alert for better UX, or a less intrusive one
+            get().setNotification({ message: 'Escalação salva!', type: 'success' });
         }
         setIsSaving(false);
     };
@@ -140,18 +146,24 @@ const MyTeam = () => {
             <header className="px-1 flex justify-between items-center mt-2">
                 <div className="flex flex-col">
                     <h1 className="text-3xl font-bebas italic text-white tracking-tighter">MEU <span className="text-volt">TIME</span></h1>
-                    <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">6 TITULARES • SEM RESERVAS</span>
+                    <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">{activeRound ? `RODADA ${activeRound.number}` : 'CARREGANDO...'}</span>
                 </div>
-                <button
-                    onClick={handleSaveSquad}
-                    disabled={!isMarketOpen || isSaving || balance < 0}
-                    className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                        !isMarketOpen || balance < 0 ? 'bg-deep-charcoal text-gray-600' : 'bg-volt text-black shadow-xl shadow-volt/20'
-                    }`}
-                >
-                    {isSaving ? '...' : 'Confirmar'}
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleSaveSquad}
+                        disabled={!isMarketOpen || isSaving || balance < 0}
+                        className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                            !isMarketOpen || balance < 0 ? 'bg-deep-charcoal text-gray-600' : 'bg-volt text-black shadow-xl shadow-volt/20'
+                        }`}
+                    >
+                        {isSaving ? '...' : 'Confirmar'}
+                    </button>
+                </div>
             </header>
+
+            <div className="px-1 -mt-2">
+                <RoundSelector />
+            </div>
 
             <Pitch
                 squad={squadObjects}
