@@ -119,8 +119,7 @@ const LeagueDetail = () => {
             // Fetch squad history for the period
             let squadQuery = supabase.from('user_squads').select(`
                 *,
-                profiles:user_id (name, avatar_url),
-                league_members:league_id, user_id (team_name)
+                profiles:user_id (name, avatar_url)
             `).eq('league_id', id);
 
             if (timeFilter === 'ROUND' && selectedRoundId) {
