@@ -21,7 +21,9 @@ export const useStore = create((set, get) => ({
     wallet: 100.0, // Default wallet value if profile not loaded
     leagueMembers: [], // Members of the currently active league for management
     feed: [],
-    notification: null, // { message: '', type: 'success' | 'error' }
+    loading: false,
+    notification: null, 
+    supabase,
     
     setNotification: (notif) => {
         set({ notification: notif });
@@ -40,6 +42,7 @@ export const useStore = create((set, get) => ({
         get().fetchTeams();
         get().fetchAthletes();
         get().fetchRounds();
+        get().clearDraftSquad();
     },
 
     fetchLeagues: async () => {
@@ -54,41 +57,11 @@ export const useStore = create((set, get) => ({
             if (error) throw error;
             set({ leagues: data || [], loading: false });
 
-            // Optionally fetch followed status if user is logged in
-            get().fetchMyFollowedLeagues();
+            // Optionally fetch joined leagues if user is logged in
+            get().fetchMyLeagues();
         } catch (err) {
             console.error('Fetch leagues error:', err);
             set({ error: err.message, loading: false });
-        }
-    },
-
-    fetchMyFollowedLeagues: async () => {
-        const { user } = get();
-        if (!user) return;
-
-        try {
-            const { data, error } = await supabase
-                .from('league_members')
-                .select(`
-                    league_id,
-                    role,
-                    team_name,
-                    leagues (
-                        id,
-                        name,
-                        is_public,
-                        owner_id
-                    )
-                `)
-                .eq('user_id', user.id);
-
-            if (error) throw error;
-            set({
-                myFollowedLeagues: data?.map(d => d.league_id) || [],
-                myFollowedLeaguesDetails: data?.map(d => ({ ...d.leagues, role: d.role, team_name: d.team_name })) || []
-            });
-        } catch (err) {
-            console.error('Error fetching followed leagues:', err);
         }
     },
 
@@ -98,86 +71,154 @@ export const useStore = create((set, get) => ({
 
         set({ loading: true });
         try {
-            // Get all leagues where user is OWNER or ADMIN
             const { data: memberData, error: mError } = await supabase
                 .from('league_members')
                 .select(`
+                    league_id,
                     role,
                     team_name,
+                    admin_code,
                     leagues (*)
                 `)
                 .eq('user_id', user.id);
 
             if (mError) throw mError;
 
-            const leagues = memberData?.map(m => ({
+            const fetchedLeagues = memberData?.map(m => ({
                 ...m.leagues,
+                role: m.role,
                 user_role: m.role,
-                team_name: m.team_name // Crucial to sync this!
+                team_name: m.team_name,
+                admin_code: m.admin_code
             })) || [];
 
             set({ 
-                myLeagues: leagues, 
-                myFollowedLeaguesDetails: leagues, // Sync for Home.jsx
+                myLeagues: fetchedLeagues, 
+                myFollowedLeagues: fetchedLeagues.map(l => l.id),
+                myFollowedLeaguesDetails: fetchedLeagues,
                 loading: false 
             });
 
-            // Auto-select first league if none active
+            // FIXED: Validate currentLeagueId against fetched results to prevent "Ghost Leagues"
             const { currentLeagueId } = get();
-            if (!currentLeagueId && leagues.length > 0) {
-                const firstId = leagues[0].id;
+            if (currentLeagueId) {
+                const stillExists = fetchedLeagues.some(l => l.id === currentLeagueId);
+                if (!stillExists) {
+                    console.warn("Current league no longer exists/joined. Clearing stale session.");
+                    set({ currentLeagueId: null });
+                    localStorage.removeItem('ctola_league_id');
+                }
+            }
+
+            // Auto-select first league only if absolutely none active
+            if (!get().currentLeagueId && fetchedLeagues.length > 0) {
+                const firstId = fetchedLeagues[0].id;
                 set({ currentLeagueId: firstId });
                 localStorage.setItem('ctola_league_id', firstId);
                 get().fetchTeams();
                 get().fetchAthletes();
                 get().fetchRounds();
+                get().fetchFeed();
             }
         } catch (err) {
+            console.error('Error in fetchMyLeagues:', err);
             set({ error: err.message, loading: false });
         }
     },
 
-    createLeague: async (name, isPublic = true, adminCode) => {
+    createLeague: async (name, isPublic = true, managementPassword = '') => {
         const { user } = get();
         if (!user) return { error: 'Not authenticated' };
 
-        set({ loading: true });
+        set({ loading: true, error: null });
         try {
             const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const { data, error } = await supabase
+            const { data, error: lError } = await supabase
                 .from('leagues')
                 .insert([{
                     name,
                     owner_id: user.id,
                     is_public: isPublic,
-                    invite_code: inviteCode
+                    invite_code: inviteCode,
+                    management_password: managementPassword
                 }])
                 .select();
 
-            if (error) throw error;
+            if (lError) throw lError;
 
-            if (data) {
-                // Also add owner as a member
-                await supabase.from('league_members').insert({
+            if (data && data[0]) {
+                // FIXED: Also save the admin_code to the league_members for instant owner auth
+                const { error: mError } = await supabase.from('league_members').insert({
                     league_id: data[0].id,
                     user_id: user.id,
                     role: 'OWNER',
-                    admin_code: adminCode
+                    admin_code: managementPassword
                 });
 
-                set(state => ({
-                    myLeagues: [...state.myLeagues, data[0]],
-                    currentLeagueId: data[0].id
-                }));
+                if (mError) throw mError;
+
+                // Select the new league immediately
+                set({ 
+                    currentLeagueId: data[0].id,
+                    loading: false 
+                });
                 localStorage.setItem('ctola_league_id', data[0].id);
-                get().setCurrentLeague(data[0].id);
+                
+                // FIXED: Automatically start Round 1 as 'open'
+                await get().startNextRound(data[0].id);
+                
+                // Refresh full state
+                await get().fetchMyLeagues();
+                return { data, error: null };
             }
 
             set({ loading: false });
-            return { data, error: null };
+            return { error: 'Falha ao criar liga' };
         } catch (err) {
-            set({ error: err.message, loading: false });
-            return { error: err.message };
+            console.error('Create league error:', err);
+            const msg = err.code === '23505' ? 'Já existe uma liga com este código ou nome.' : err.message;
+            set({ error: msg, loading: false });
+            return { error: msg };
+        }
+    },
+
+    removeFromDraftSquad: (athlete) => {
+        set(state => {
+            const newDraftSquad = { ...state.draftSquad };
+            const slot = Object.keys(newDraftSquad).find(k => String(newDraftSquad[k]) === String(athlete.id));
+            if (slot) {
+                newDraftSquad[slot] = null;
+            }
+            
+            let newCaptainId = state.draftCaptainId;
+            if (String(state.draftCaptainId) === String(athlete.id)) {
+                newCaptainId = null;
+            }
+
+            return { 
+                draftSquad: newDraftSquad,
+                draftCaptainId: newCaptainId
+            };
+        });
+    },
+
+    promoteToAdmin: async (leagueId, userId) => {
+        set({ loading: true });
+        try {
+            const { error } = await supabase
+                .from('league_members')
+                .update({ role: 'ADMIN' })
+                .match({ league_id: leagueId, user_id: userId });
+
+            if (error) throw error;
+            
+            set({ notification: { message: 'Membro promovido a ADMIN!', type: 'success' } });
+            get().fetchLeagueData(); // Refresh league members
+        } catch (err) {
+            console.error('Error in promoteToAdmin:', err);
+            set({ notification: { message: 'Erro ao promover membro', type: 'error' } });
+        } finally {
+            set({ loading: false });
         }
     },
 
@@ -263,8 +304,7 @@ export const useStore = create((set, get) => ({
             if (error) throw error;
             
             // Refetch to ensure all components have the latest data
-            await get().fetchMyFollowedLeagues();
-            await get().fetchMyLeagues(); // Also sync myLeagues state
+            await get().fetchMyLeagues();
             
             set({ loading: false });
             return { error: null };
@@ -286,7 +326,7 @@ export const useStore = create((set, get) => ({
 
             if (error) throw error;
             
-            await get().fetchMyFollowedLeagues();
+            await get().fetchMyLeagues();
             return { error: null };
         } catch (err) {
             return { error: err.message };
@@ -357,10 +397,35 @@ export const useStore = create((set, get) => ({
                 .eq('id', userId)
                 .maybeSingle();
 
-            if (!error) set({ profile: data });
-            return { data, error };
+            if (!error && data) {
+                set({ profile: data, wallet: data.wallet });
+                return { data, error: null };
+            }
+
+            // AUTO-REPAIR: If profile missing but user is authenticated, try to create it
+            const { user } = get();
+            if (user && user.id === userId) {
+                console.log("Repairing missing profile for authenticated user...");
+                const { data: newData, error: pError } = await supabase
+                    .from('profiles')
+                    .insert([{ 
+                        id: userId, 
+                        name: user.user_metadata?.full_name || user.email.split('@')[0], 
+                        role: 'USER' 
+                    }])
+                    .select()
+                    .single();
+
+                if (!pError) {
+                    set({ profile: newData, wallet: newData.wallet });
+                    return { data: newData, error: null };
+                }
+            }
+
+            return { data: null, error };
         } catch (err) {
             console.error("Profile fetch error:", err);
+            return { error: err.message };
         }
     },
 
@@ -377,24 +442,30 @@ export const useStore = create((set, get) => ({
 
     signUp: async (email, password, name) => {
         set({ loading: true, error: null });
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: name } }
-        });
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: { data: { full_name: name } }
+            });
 
-        if (error) {
-            set({ error: error.message, loading: false });
-        } else if (data.user) {
-            // Create profile entry
-            const { error: pError } = await supabase
-                .from('profiles')
-                .insert([{ id: data.user.id, name, role: 'USER' }]);
+            if (error) throw error;
 
-            if (!pError) await get().fetchProfile(data.user.id);
-            set({ user: data.user, loading: false });
+            if (data.user) {
+                // Ensure profile is created immediately
+                await supabase
+                    .from('profiles')
+                    .insert([{ id: data.user.id, name, role: 'USER' }]);
+
+                set({ user: data.user, loading: false });
+                await get().fetchProfile(data.user.id);
+            }
+            return { data, error: null };
+        } catch (err) {
+            console.error("SignUp error:", err);
+            set({ error: err.message, loading: false });
+            return { error: err.message };
         }
-        return { data, error };
     },
 
     updateProfile: async (updates) => {
@@ -538,7 +609,7 @@ export const useStore = create((set, get) => ({
 
         set({ loading: true });
         try {
-            // Fetch squads
+            // 1. Fetch squads for this league
             const { data: squads, error: sError } = await supabase
                 .from('user_squads')
                 .select('*')
@@ -546,22 +617,29 @@ export const useStore = create((set, get) => ({
 
             if (sError) throw sError;
 
-            // Fetch profiles for these squads
+            // 2. Fetch league members to get team_name
+            const { data: members, error: mError } = await supabase
+                .from('league_members')
+                .select('user_id, team_name, role')
+                .eq('league_id', currentLeagueId);
+
+            // 3. Fetch profiles for basic info (avatar/real name fallback)
             const userIds = [...new Set(squads.map(s => s.user_id))];
-            const { data: profiles, error: pError } = await supabase
+            const { data: profiles } = await supabase
                 .from('profiles')
-                .select('id, name, display_name, avatar_url')
+                .select('id, name, avatar_url')
                 .in('id', userIds);
 
-            if (pError) {
-                console.warn('Profiles fetch failed, possibly due to relationship issues:', pError);
-            }
-
-            // Merge
-            const enrichedSquads = squads.map(s => ({
-                ...s,
-                profiles: profiles?.find(p => p.id === s.user_id) || null
-            }));
+            // Merge everything
+            const enrichedSquads = squads.map(s => {
+                const member = members?.find(m => m.user_id === s.user_id);
+                const profile = profiles?.find(p => p.id === s.user_id);
+                return {
+                    ...s,
+                    team_name: member?.team_name || profile?.name || 'Time sem Nome',
+                    profiles: profile
+                };
+            });
 
             set({ loading: false });
             return enrichedSquads;
@@ -612,15 +690,18 @@ export const useStore = create((set, get) => ({
                 if (local) set({ rounds: JSON.parse(local) });
             }
 
-            // Default to last round if none selected OR last selection is invalid
+            // Default logic for active round selection
             const currentRounds = get().rounds;
             if (currentRounds.length > 0) {
                 const storedRoundId = localStorage.getItem('ctola_active_round_id');
-                const exists = currentRounds.find(r => r.id === storedRoundId);
-                if (!exists) {
-                    const lastRoundId = currentRounds[currentRounds.length - 1].id;
-                    set({ activeRoundId: lastRoundId });
-                    localStorage.setItem('ctola_active_round_id', lastRoundId);
+                const currentRound = currentRounds.find(r => r.id === storedRoundId);
+                
+                // ONLY auto-select if no round is stored OR stored round doesn't belong to this league
+                if (!currentRound) {
+                    const newestActive = [...currentRounds].reverse().find(r => r.status !== 'finished');
+                    const targetRoundId = newestActive ? newestActive.id : currentRounds[currentRounds.length - 1].id;
+                    set({ activeRoundId: targetRoundId });
+                    localStorage.setItem('ctola_active_round_id', targetRoundId);
                 }
             }
         } catch (err) {
@@ -671,6 +752,7 @@ export const useStore = create((set, get) => ({
         } else {
             localStorage.removeItem('ctola_active_round_id');
         }
+        get().clearDraftSquad();
     },
 
     // Fetch all athletes for current league
@@ -944,9 +1026,11 @@ export const useStore = create((set, get) => ({
             }
 
             get().setNotification({ message: 'Mercado valorizado com sucesso!', type: 'success' });
+            return { error: null };
         } catch (err) {
             console.error('Valuation Error:', err);
-            get().setNotification({ message: 'Erro na valorização', type: 'error' });
+            get().setNotification({ message: 'Erro na valorização: ' + err.message, type: 'error' });
+            return { error: err.message };
         } finally {
             set({ loading: false });
         }
@@ -955,34 +1039,51 @@ export const useStore = create((set, get) => ({
     // Update round status (open/locked)
     updateRoundStatus: async (roundId, status) => {
         set({ loading: true });
-        const { error } = await supabase.from('rounds').update({ status }).eq('id', roundId);
-        if (!error) {
-            set(state => ({ rounds: state.rounds.map(r => r.id === roundId ? { ...r, status } : r) }));
-            get().setNotification({ message: `Mercado ${status === 'open' ? 'Aberto' : 'Fechado'}`, type: 'success' });
+        try {
+            const { error } = await supabase.from('rounds').update({ status }).eq('id', roundId);
+            if (!error) {
+                set(state => ({ rounds: state.rounds.map(r => r.id === roundId ? { ...r, status } : r) }));
+                get().setNotification({ message: `Mercado ${status === 'open' ? 'Aberto' : 'Fechado'}`, type: 'success' });
+            }
+            return { error };
+        } finally {
+            set({ loading: false });
         }
-        set({ loading: false });
-        return { error };
     },
 
     finishRound: async (roundId) => {
         set({ loading: true });
-        const { currentLeagueId } = get();
-        const { error } = await supabase.from('rounds').update({ status: 'finished' }).eq('id', roundId);
-        if (!error) {
-            await get().runMarketValuation(currentLeagueId, roundId);
-            set(state => ({ rounds: state.rounds.map(r => r.id === roundId ? { ...r, status: 'finished' } : r) }));
+        try {
+            const { currentLeagueId } = get();
+            const { error } = await supabase.from('rounds').update({ status: 'finished' }).eq('id', roundId);
+            if (!error) {
+                const vRes = await get().runMarketValuation(currentLeagueId, roundId);
+                if (vRes?.error) {
+                    console.error('Valuation failed during finishRound, but round marked as finished.');
+                }
+                set(state => ({ 
+                    rounds: state.rounds.map(r => r.id === roundId ? { ...r, status: 'finished' } : r) 
+                }));
+            }
+            return { error };
+        } finally {
+            set({ loading: false });
         }
-        set({ loading: false });
-        return { error };
     },
 
     startNextRound: async (leagueId) => {
         set({ loading: true });
-        const { rounds } = get();
-        const nextNum = rounds.filter(r => r.league_id === leagueId).length + 1;
-        const { data, error } = await supabase.from('rounds').insert([{ league_id: leagueId, number: nextNum, status: 'open' }]).select().single();
-        if (!error && data) set({ rounds: [...rounds, data], activeRoundId: data.id });
-        set({ loading: false });
-        return { data, error };
+        try {
+            const { rounds } = get();
+            const nextNum = rounds.filter(r => r.league_id === leagueId).length + 1;
+            const { data, error } = await supabase.from('rounds').insert([{ league_id: leagueId, number: nextNum, status: 'open' }]).select().single();
+            if (!error && data) {
+                set({ rounds: [...rounds, data], activeRoundId: data.id });
+                localStorage.setItem('ctola_active_round_id', data.id);
+            }
+            return { data, error };
+        } finally {
+            set({ loading: false });
+        }
     }
 }));

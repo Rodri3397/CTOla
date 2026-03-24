@@ -7,8 +7,10 @@ export default function RoundSelector({ isAdmin = false }) {
     const { rounds, activeRoundId, setActiveRound, fetchRounds, createRound, loading } = useStore();
 
     useEffect(() => {
-        fetchRounds();
-    }, [fetchRounds]);
+        if (rounds.length === 0) {
+            fetchRounds();
+        }
+    }, [fetchRounds, rounds.length]);
 
     if (rounds.length === 0 && !isAdmin) return null;
 

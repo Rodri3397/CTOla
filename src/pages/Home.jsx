@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Zap, TrendingUp, Users, Calendar, ChevronRight, Trophy, Shield, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +9,8 @@ import RoundSelector from '../components/RoundSelector';
 export default function Home() {
     const {
         teams, fetchLeagueData, feed, loading, activeRoundId, rounds,
-        currentLeagueId, setCurrentLeague, supabase, profile, myFollowedLeaguesDetails
+        currentLeagueId, setCurrentLeague, supabase, profile, myFollowedLeaguesDetails,
+        athletes
     } = useStore();
     const navigate = useNavigate();
     const [selectedMonth, setSelectedMonth] = useState('ALL');
@@ -126,6 +127,35 @@ export default function Home() {
 
     const { round: roundScore, total: totalScore } = getScores();
 
+    // Calculate real budget for the bar
+    const budgetData = useMemo(() => {
+        const squad = dbSquad?.squad_data || {};
+        const cost = Object.values(squad).reduce((acc, id) => {
+            const athlete = athletes.find(a => String(a.id) === String(id));
+            return acc + (athlete?.price || 0);
+        }, 0);
+        const patrimony = parseFloat(profile?.wallet) || 100.0;
+        return { patrimony, cost, balance: patrimony - cost };
+    }, [dbSquad, athletes]);
+
+    // Calculate Top Scorers of the Round
+    const topScorers = useMemo(() => {
+        if (!allStats || allStats.length === 0) return [];
+        const roundStats = allStats.filter(s => s.round_id === activeRoundId);
+        return roundStats
+            .map(s => {
+                const athlete = feed.find(f => f.athlete_id === s.athlete_id)?.athletes || 
+                                (teams.flatMap(t => t.athletes || []).find(a => a.id === s.athlete_id));
+                return {
+                    ...s,
+                    athlete_name: athlete?.name || 'Atleta',
+                    athlete_pos: athlete?.pos || 'N/A'
+                };
+            })
+            .sort((a, b) => b.points - a.points)
+            .slice(0, 3);
+    }, [allStats, activeRoundId, feed, teams]);
+
     const SkeletonItem = () => (
         <div className="bg-deep-charcoal p-5 rounded-[2.5rem] border border-white/5 flex items-center justify-between animate-pulse opacity-40">
             <div className="flex items-center gap-5">
@@ -142,119 +172,124 @@ export default function Home() {
     return (
         <div className="flex flex-col gap-10 animate-fade-in pb-32">
             {/* Header Premium */}
-            <header className="flex flex-col gap-8 px-1">
+            <header className="flex flex-col gap-6 px-1">
                 <div className="flex justify-between items-center">
                     <div className="flex flex-col">
-                        <h1 className="text-5xl font-bebas italic text-white leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                            CT<span className="text-volt">OLA</span>
-                        </h1>
-                        <span className="text-[10px] font-inter font-black uppercase text-gray-700 tracking-[0.5em] ml-0.5 mt-2">
-                            Futsal Fantasy League
-                        </span>
-                    </div>
-                </div>
-
-                {/* Bento Grid Principal */}
-                <div className="grid grid-cols-2 gap-5">
-                    {/* Card de Boas-vindas / Próximo Jogo */}
-                    <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="col-span-2 bento-card flex flex-col justify-between min-h-[180px] bg-gradient-to-br from-[#0d0d0d] via-black to-[#0a0a0a] relative overflow-hidden group border-white/10"
-                    >
-                        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity blur-[2px]">
-                            <Trophy size={110} className="text-volt" />
-                        </div>
-                        <div className="relative z-10">
-                            <span className="text-[10px] font-black uppercase text-gray-600 tracking-[0.3em] mb-3 block">Liga em Destaque</span>
-                            <h2 className="text-3xl font-bebas text-white leading-tight uppercase truncate max-w-[240px]">
-                                {myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'Nenhuma Liga'}
-                            </h2>
-                        </div>
-                        <div className="relative z-10 flex items-center justify-between mt-8">
-                            <RoundSelector />
-                            <motion.button 
-                                whileHover={{ scale: 1.1, rotate: 5 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => navigate('/ranking')}
-                                className="w-12 h-12 rounded-2xl bg-volt flex items-center justify-center text-black shadow-[0_8px_25px_rgba(223,255,0,0.4)] transition-all"
-                            >
-                                <ChevronRight size={24} strokeWidth={3} />
-                            </motion.button>
-                        </div>
-                    </motion.div>
-
-                    {/* Card de Pontos da Rodada */}
-                    <div className="bento-card flex flex-col gap-3 relative group overflow-hidden border-white/5">
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-volt group-hover:scale-110 transition-transform blur-sm">
-                            <Zap size={80} />
-                        </div>
-                        <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Sua Rodada</span>
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-4xl font-bebas text-volt tracking-tighter">{roundScore.toFixed(1)}</span>
-                            <span className="text-[12px] font-black text-gray-700 uppercase">PTS</span>
-                        </div>
-                        <div className="mt-3 h-1.5 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
-                            <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: roundScore > 0 ? '75%' : '5%' }}
-                                className="h-full bg-gradient-to-r from-volt to-green-400 shadow-[0_0_10px_rgba(223,255,0,0.5)]"
-                                transition={{ duration: 1.5, ease: "easeOut" }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Card de Patrimonio / Total */}
-                    <div className="bento-card flex flex-col gap-3 relative group overflow-hidden border-white/5">
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-white group-hover:scale-110 transition-transform blur-sm">
-                            <TrendingUp size={80} />
-                        </div>
-                        <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Patrimônio</span>
-                        <div className="flex flex-col">
-                            <span className="text-4xl font-bebas text-white tracking-tighter">C$ {totalScore.toFixed(1)}</span>
-                            <span className="text-[9px] font-black text-green-500/80 uppercase tracking-widest mt-2 flex items-center gap-1">
-                                <TrendingUp size={10} /> Alta Mensal
-                            </span>
+                        {currentLeagueId && (
+                            <div className="flex items-center gap-2 mb-2 px-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-volt shadow-glow animate-pulse" />
+                                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em]">Arena Selecionada</span>
+                            </div>
+                        )}
+                        <div className="flex items-baseline gap-3">
+                            <h1 className="text-5xl font-bebas italic text-white leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                CT<span className="text-volt">OLA</span>
+                            </h1>
+                            {currentLeagueId && (
+                                <span className="text-lg font-bebas italic text-volt/60 tracking-tight brightness-110">
+                                    / {myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'Arena'}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Minhas Ligas Horizontal */}
-                <div className="flex flex-col gap-5 mt-4">
-                    <div className="flex items-center justify-between px-1">
-                        <h2 className="text-[12px] font-black text-gray-700 uppercase tracking-[0.4em]">Minhas Divisões</h2>
-                        <button onClick={() => navigate('/explorar')} className="text-[10px] font-black text-volt uppercase tracking-widest hover:brightness-125 transition-all">Explorar</button>
+                {/* Budget Bar - Fixed at top of content */}
+                <div className="grid grid-cols-3 gap-3">
+                    <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center bg-black/40">
+                        <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Patrimônio</span>
+                        <span className="text-base font-bebas text-white">C$ {budgetData.patrimony.toFixed(1)}</span>
                     </div>
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 -mx-1 px-1">
+                    <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center border-volt/20 bg-volt/5">
+                        <span className="text-[7px] font-black text-volt/60 uppercase tracking-widest">Custo</span>
+                        <span className="text-base font-bebas text-volt">C$ {budgetData.cost.toFixed(1)}</span>
+                    </div>
+                    <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center bg-black/40">
+                        <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Saldo</span>
+                        <span className={`text-base font-bebas ${budgetData.balance < 0 ? 'text-electric-crimson' : 'text-white'}`}>C$ {budgetData.balance.toFixed(1)}</span>
+                    </div>
+                </div>
+
+                {/* League Selection Tabs - Moved to Top */}
+                <div className="flex flex-col gap-3">
+                    <span className="text-[8px] font-black text-gray-700 uppercase tracking-[0.4em] px-1">Selecione sua Arena</span>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                         {myFollowedLeaguesDetails.map((league) => (
-                            <motion.button
+                            <button
                                 key={league.id}
-                                whileHover={{ y: -4 }}
-                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setCurrentLeague(league.id)}
-                                className={`flex-shrink-0 px-8 py-5 rounded-[2.2rem] border transition-all flex items-center gap-4 ${currentLeagueId === league.id
-                                    ? 'bg-volt text-black shadow-[0_15px_35px_rgba(223,255,0,0.2)] border-volt'
-                                    : 'bg-[#0d0d0d] border-white/5 text-gray-600 hover:text-white hover:border-white/20'
+                                className={`flex-shrink-0 px-6 py-3 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest ${currentLeagueId === league.id
+                                    ? 'bg-volt text-black border-volt shadow-glow'
+                                    : 'bg-white/5 border-white/5 text-gray-500 hover:text-white hover:border-white/10'
                                     }`}
                             >
-                                <Shield size={16} className={currentLeagueId === league.id ? 'text-black' : 'text-volt'} />
-                                <span className="text-[12px] font-black uppercase tracking-widest">{league.name}</span>
-                            </motion.button>
+                                {league.name}
+                            </button>
                         ))}
                     </div>
                 </div>
+
+                {/* Primary Stats */}
+                <div className="grid grid-cols-1">
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bento-card flex flex-col gap-3 relative group overflow-hidden border-volt/20 bg-volt/5 py-8 items-center"
+                        onClick={() => navigate(`/league/${currentLeagueId}`)}
+                    >
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.05] text-volt blur-sm">
+                            <Trophy size={100} />
+                        </div>
+                        <span className="text-[9px] font-black text-volt uppercase tracking-widest">Sua Pontuação na Rodada</span>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-6xl font-bebas text-white tracking-tighter">{roundScore.toFixed(1)}</span>
+                            <span className="text-sm font-black text-gray-600 uppercase">PTS</span>
+                        </div>
+                        <div className="mt-4 flex items-center gap-2 text-[8px] font-black text-gray-500 uppercase tracking-widest border border-white/10 px-4 py-2 rounded-full">
+                            Entrar na Arena <ChevronRight size={10} />
+                        </div>
+                    </motion.div>
+                </div>
+
+                {/* Destaques da Rodada - Novo Requirement */}
+                <div className="flex flex-col gap-5">
+                    <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-3">
+                            <Trophy size={14} className="text-volt" />
+                            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">Mitos da Rodada</h2>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        {topScorers.length > 0 ? topScorers.map((s, i) => (
+                            <div key={i} className="bento-card p-4 flex flex-col items-center text-center gap-2 border-white/5 bg-black/40">
+                                <div className="w-10 h-10 rounded-xl bg-volt/10 flex items-center justify-center text-xl shadow-inner border border-volt/10">
+                                   {s.athlete_pos === 'GOLEIRO' ? '🧤' : '🏃'}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-black text-white uppercase truncate w-20 leading-tight">{s.athlete_name}</span>
+                                    <span className="text-[12px] font-bebas text-volt italic mt-1">{s.points.toFixed(1)} pts</span>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="col-span-3 py-6 text-center opacity-20">
+                                <span className="text-[8px] font-black uppercase tracking-widest">Aguardando Scouts...</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
             </header>
 
-            {/* Feed Section (Premium List) */}
+            {/* Feed Section */}
             <section className="flex flex-col gap-8 px-1">
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
-                        <h2 className="text-[12px] font-black text-gray-600 uppercase tracking-[0.4em]">Radar da Rodada</h2>
-                        <span className="text-[8px] font-bold text-gray-800 uppercase tracking-widest">Principais acontecimentos</span>
+                        <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.4em]">Radar de Eventos</h2>
+                        <span className="text-[8px] font-bold text-gray-800 uppercase tracking-widest">Atividade em tempo real</span>
                     </div>
                     <div className="px-4 py-2 bg-black rounded-2xl border border-white/5 shadow-2xl">
                         <span className="text-[9px] font-black uppercase text-volt animate-pulse tracking-widest flex items-center gap-2">
-                             AO VIVO
+                             LIVE
                         </span>
                     </div>
                 </div>
@@ -282,7 +317,7 @@ export default function Home() {
                                                     {event.athletes?.name}
                                                 </span>
                                                 <span className="text-[10px] font-bold text-gray-700 uppercase tracking-widest mt-2 flex items-center gap-2">
-                                                    {event.athletes?.pos} <span className="w-1 h-1 rounded-full bg-white/10" /> {event.gols > 0 ? 'GOLEADOR' : event.assistencias > 0 ? 'GARÇOM' : 'PAREDÃO'}
+                                                    {event.athletes?.pos} <span className="w-1 h-1 rounded-full bg-white/10" /> {event.gols > 0 ? 'MARCOU' : event.assistencias > 0 ? 'ASSISTÊNCIA' : 'SCOUT'}
                                                 </span>
                                             </div>
                                         </div>

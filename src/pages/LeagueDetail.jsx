@@ -5,9 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Trophy, Users, Info, Calendar, ChevronLeft,
     Filter, TrendingUp, Medal, Star, Zap, Loader2, Shield, Lock,
-    Copy, ExternalLink, Activity
+    Copy, ExternalLink, Activity, Search
 } from 'lucide-react';
-import { calculateScore } from '../utils/scoring';
 
 const TabButton = ({ active, onClick, icon: Icon, label }) => (
     <button
@@ -24,22 +23,23 @@ const LeagueDetail = () => {
     const navigate = useNavigate();
     const {
         myFollowedLeaguesDetails, currentLeagueId, setCurrentLeague,
-        fetchLeaderboard, activeRoundId, supabase, teams
+        supabase, user, promoteToAdmin
     } = useStore();
 
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('fantasy'); // 'fantasy', 'athletes', 'clubs', 'info'
+    const [activeTab, setActiveTab] = useState('times'); // 'times', 'athletes', 'info'
     const [timeFilter, setTimeFilter] = useState('TOTAL'); // 'TOTAL', 'MONTH', 'ROUND'
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedRoundId, setSelectedRoundId] = useState(null);
     const [availableRounds, setAvailableRounds] = useState([]);
     const [userLeaderboard, setUserLeaderboard] = useState([]);
     const [athleteLeaderboard, setAthleteLeaderboard] = useState([]);
-    const [teamLeaderboard, setTeamLeaderboard] = useState([]);
-
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedMember, setSelectedMember] = useState(null);
     const league = myFollowedLeaguesDetails.find(l => l.id === id);
     const isLeagueAdmin = league?.role === 'OWNER' || league?.role === 'ADMIN';
     const isMember = myFollowedLeaguesDetails.some(l => l.id === id);
+    const isLeagueOwner = league?.owner_id === user?.id;
 
     useEffect(() => {
         if (id && supabase) {
@@ -67,7 +67,6 @@ const LeagueDetail = () => {
             if (error) throw error;
             setAvailableRounds(data || []);
             if (data?.length > 0 && !selectedRoundId) {
-                // Default to latest round
                 setSelectedRoundId(data[0].id);
             }
         } catch (err) {
@@ -78,19 +77,16 @@ const LeagueDetail = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            // Safety check for round filter
             if (timeFilter === 'ROUND' && !selectedRoundId) {
                 setLoading(false);
                 return;
             }
 
-            // 1. Fetch Stats based on filter
+            // 1. Fetch Stats
             let query = supabase.from('match_stats').select('*').eq('league_id', id);
-            
             if (timeFilter === 'ROUND' && selectedRoundId) {
                 query = query.eq('round_id', selectedRoundId);
             }
-            
             const { data: statsData, error: statsError } = await query;
             if (statsError) throw statsError;
 
@@ -99,75 +95,54 @@ const LeagueDetail = () => {
                 filteredStats = filteredStats.filter(s => new Date(s.created_at).getMonth() === selectedMonth);
             }
 
-            // 2. Athlete Leaderboard Calculation
-            const { data: athletesInfo } = await supabase
-                .from('athletes')
-                .select('id, name, pos, team_id')
-                .eq('league_id', id);
-
+            // 2. Athlete Leaderboard
+            const { data: athletesInfo } = await supabase.from('athletes').select('id, name, pos, team_id').eq('league_id', id);
             const athleteMap = {};
-            
             filteredStats.forEach(st => {
                 const athlete = athletesInfo?.find(a => a.id === st.athlete_id);
                 if (athlete) {
                     if (!athleteMap[st.athlete_id]) {
-                        athleteMap[st.athlete_id] = {
-                            id: st.athlete_id,
-                            name: athlete.name,
-                            pos: athlete.pos,
-                            points: 0
-                        };
+                        athleteMap[st.athlete_id] = { id: st.athlete_id, name: athlete.name, pos: athlete.pos, points: 0 };
                     }
                     athleteMap[st.athlete_id].points += Number(st.points || 0);
                 }
             });
-
+            console.log('Leaderboard calculated:', Object.keys(athleteMap).length, 'athletes');
             setAthleteLeaderboard(Object.values(athleteMap).sort((a, b) => b.points - a.points));
 
-            // Athlete Points Map for Round-specific calculation
+            // 3. Fantasy Team Leaderboard
+            const { data: squads, error: squadError } = await supabase.from('user_squads').select('*').eq('league_id', id);
+            if (squadError) throw squadError;
+
+            const { data: members, error: memberError } = await supabase.from('league_members').select('user_id, team_name').eq('league_id', id);
+            if (memberError) throw memberError;
+
+            const userIds = [...new Set((squads || []).map(s => s.user_id))];
+            const { data: profiles } = await supabase.from('profiles').select('id, name, avatar_url').in('id', userIds);
+            
+            const userPointsMap = {};
+            (members || []).forEach(m => {
+                userPointsMap[m.user_id] = { team_name: m.team_name || 'TITÃ SEM NOME', user_name: 'Comandante', avatar: null, points: 0 };
+            });
+
             const athletePointsByRound = {};
             (statsData || []).forEach(st => {
                 if (!athletePointsByRound[st.round_id]) athletePointsByRound[st.round_id] = {};
                 athletePointsByRound[st.round_id][st.athlete_id] = Number(st.points || 0);
             });
 
-            // 3. Fantasy Team Leaderboard
-            let squadQuery = supabase.from('user_squads').select(`
-                *,
-                profiles:user_id (name, avatar_url)
-            `).eq('league_id', id);
-
-            if (timeFilter === 'ROUND' && selectedRoundId) {
-                squadQuery = squadQuery.eq('round_id', selectedRoundId);
-            }
-
-            const { data: squads, error: squadError } = await squadQuery;
-            if (squadError) throw squadError;
-
-            const { data: members } = await supabase.from('league_members').select('user_id, team_name').eq('league_id', id);
-            
-            const userPointsMap = {};
-            (members || []).forEach(m => {
-                userPointsMap[m.user_id] = {
-                    team_name: m.team_name || 'Meu Time', 
-                    user_name: 'Comandante',
-                    avatar: null,
-                    points: 0
-                };
-            });
-
             (squads || []).forEach(s => {
                 const userId = s.user_id;
                 if (!userPointsMap[userId]) return;
-
-                if (s.profiles) {
-                    userPointsMap[userId].user_name = s.profiles.name || userPointsMap[userId].user_name;
-                    userPointsMap[userId].avatar = s.profiles.avatar_url || userPointsMap[userId].avatar;
+                
+                const profile = (profiles || []).find(p => p.id === userId);
+                if (profile) {
+                    userPointsMap[userId].user_name = profile.name || userPointsMap[userId].user_name;
+                    userPointsMap[userId].avatar = profile.avatar_url || userPointsMap[userId].avatar;
                 }
-
-                if (timeFilter === 'MONTH') {
-                    if (new Date(s.created_at).getMonth() !== selectedMonth) return;
-                }
+                
+                if (timeFilter === 'MONTH' && new Date(s.created_at).getMonth() !== selectedMonth) return;
+                if (timeFilter === 'ROUND' && s.round_id !== selectedRoundId) return;
 
                 const roundPoints = athletePointsByRound[s.round_id] || {};
                 let squadTotal = 0;
@@ -181,35 +156,22 @@ const LeagueDetail = () => {
                 userPointsMap[userId].points += squadTotal;
             });
 
-            setUserLeaderboard(Object.values(userPointsMap).sort((a, b) => b.points - a.points));
-
-            // 4. Club Leaderboard
-            const { data: leagueTeams } = await supabase.from('teams').select('*').eq('league_id', id);
-            const teamPointsMap = {};
-            leagueTeams?.forEach(t => {
-                teamPointsMap[t.id] = { name: t.name, points: 0 };
-            });
-
-            filteredStats.forEach(st => {
-                const athlete = athletesInfo?.find(a => a.id === st.athlete_id);
-                if (athlete && teamPointsMap[athlete.team_id]) {
-                    teamPointsMap[athlete.team_id].points += Number(st.points || 0);
-                }
-            });
-
-            setTeamLeaderboard(Object.values(teamPointsMap).sort((a, b) => b.points - a.points));
+            const leaderboard = Object.values(userPointsMap).sort((a, b) => b.points - a.points);
+            setUserLeaderboard(leaderboard);
 
         } catch (err) {
-            console.error('League detail error:', err);
+            console.error('CRITICAL: League detail error:', err);
+            setNotification({ message: 'Erro ao carregar dados: ' + err.message, type: 'error' });
         } finally {
             setLoading(false);
         }
     };
 
-    const months = [
-        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-    ];
+    const filteredAthletes = athleteLeaderboard.filter(a => 
+        a.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
     return (
         <div className="flex flex-col gap-10 animate-fade-in pb-32">
@@ -219,55 +181,47 @@ const LeagueDetail = () => {
                         <button onClick={() => navigate(-1)} className="p-4 bento-card text-gray-500 hover:text-white transition-all">
                             <ChevronLeft size={20} />
                         </button>
-                        <div>
-                            <h1 className="text-3xl font-bebas italic text-white leading-none tracking-tighter uppercase">{league?.name || 'DETALHES DA ARENA'}</h1>
-                            <div className="flex items-center gap-2 mt-2">
-                                <span className="text-[8px] font-black uppercase text-volt tracking-[0.3em]">ID: {league?.invite_code || '---'}</span>
-                                {league?.is_public && <div className="w-1 h-1 rounded-full bg-volt shadow-glow" />}
+                        <div className="flex items-center gap-3">
+                            <div>
+                                <h1 className="text-3xl font-bebas italic text-white leading-none tracking-tighter uppercase">{league?.name || 'ARENA'}</h1>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <span className="text-[8px] font-black uppercase text-volt tracking-[0.3em]">ID: {league?.invite_code || '---'}</span>
+                                </div>
                             </div>
+                            {isLeagueAdmin && (
+                                <button 
+                                    onClick={() => navigate('/admin/dashboard')}
+                                    className="px-4 py-2 bg-white/10 border border-white/10 rounded-xl text-[8px] font-black text-volt uppercase tracking-widest hover:bg-volt hover:text-black transition-all"
+                                >
+                                    GESTÃO
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {isMember && (
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => {
-                            setCurrentLeague(id);
-                            navigate('/admin/dashboard');
-                        }}
-                        className={`p-6 bento-card flex items-center justify-between group transition-all ${isLeagueAdmin ? 'border-volt/30 bg-volt/5 pb-8' : 'border-white/5 opacity-80'}`}
-                    >
-                        <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center border border-white/5">
-                                {isLeagueAdmin ? <Activity size={20} className="text-volt animate-pulse" /> : <Lock size={20} className="text-gray-600" />}
-                            </div>
-                            <div className="flex flex-col items-start text-left">
-                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">
-                                    {isLeagueAdmin ? 'CENTRO DE COMANDO' : 'ARENA DE GESTÃO'}
-                                </span>
-                                <span className="text-[7px] font-bold uppercase text-gray-600 tracking-widest mt-1.5 leading-none">
-                                    {isLeagueAdmin ? 'Administrar competições e elenco' : 'Acesso restrito à diretoria'}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-volt group-hover:text-black transition-all">
-                            <ExternalLink size={14} />
-                        </div>
-                    </motion.button>
-                )}
-
-                <div className="flex gap-2 p-1.5 bg-deep-charcoal rounded-[2rem] border border-white/5 overflow-x-auto no-scrollbar">
-                    <TabButton active={activeTab === 'fantasy'} onClick={() => setActiveTab('fantasy')} icon={Users} label="Times" />
+                <div className="flex gap-2 p-1.5 bg-deep-charcoal rounded-[2rem] border border-white/5">
+                    <TabButton active={activeTab === 'times'} onClick={() => setActiveTab('times')} icon={Users} label="Times" />
                     <TabButton active={activeTab === 'athletes'} onClick={() => setActiveTab('athletes')} icon={Trophy} label="Atletas" />
-                    <TabButton active={activeTab === 'clubs'} onClick={() => setActiveTab('clubs')} icon={Shield} label="Clubes" />
                     <TabButton active={activeTab === 'info'} onClick={() => setActiveTab('info')} icon={Info} label="Info" />
                 </div>
             </header>
 
-            {(activeTab !== 'info') && (
+            {activeTab !== 'info' && (
                 <section className="flex flex-col gap-6 px-1">
+                    {activeTab === 'athletes' && (
+                        <div className="relative group">
+                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-volt transition-colors" size={18} />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="BUSCAR ATLETA NA ARENA..."
+                                className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-16 pr-6 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-volt/40 transition-all placeholder:text-gray-700"
+                            />
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-between bg-deep-charcoal p-4 rounded-[2rem] border border-white/5 shadow-2xl overflow-x-auto no-scrollbar gap-4">
                         <div className="flex gap-2">
                             {['TOTAL', 'MONTH', 'ROUND'].map(f => (
@@ -288,22 +242,17 @@ const LeagueDetail = () => {
                                     onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
                                     className="bg-transparent text-[9px] font-black uppercase text-volt outline-none border-b-2 border-volt/30 pb-1 pr-2 tracking-widest"
                                 >
-                                    {months.map((m, i) => (
-                                        <option key={i} value={i} className="bg-black text-white">{m}</option>
-                                    ))}
+                                    {months.map((m, i) => <option key={i} value={i} className="bg-black text-white">{m}</option>)}
                                 </select>
                             )}
-
                             {timeFilter === 'ROUND' && (
                                 <select
                                     value={selectedRoundId || ''}
                                     onChange={(e) => setSelectedRoundId(e.target.value)}
                                     className="bg-transparent text-[9px] font-black uppercase text-volt outline-none border-b-2 border-volt/30 pb-1 pr-2 tracking-widest"
                                 >
-                                    {availableRounds.map((r, i) => (
-                                        <option key={r.id} value={r.id} className="bg-black text-white">Rodada {r.number}</option>
-                                    ))}
-                                    {availableRounds.length === 0 && <option value="" className="bg-black text-white">Nenhuma rodada</option>}
+                                    {availableRounds.map(r => <option key={r.id} value={r.id} className="bg-black text-white">Rodada {r.number}</option>)}
+                                    {availableRounds.length === 0 && <option value="" className="bg-black text-white">Nenhuma</option>}
                                 </select>
                             )}
                         </div>
@@ -312,12 +261,12 @@ const LeagueDetail = () => {
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-6 opacity-30">
                             <Loader2 className="w-12 h-12 animate-spin text-volt" />
-                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest italic">Processando Ranking...</span>
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Processando...</span>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4">
                             <AnimatePresence mode="popLayout">
-                                {(activeTab === 'fantasy' ? userLeaderboard : activeTab === 'athletes' ? athleteLeaderboard : teamLeaderboard).map((item, idx) => {
+                                {(activeTab === 'times' ? userLeaderboard : filteredAthletes).map((item, idx) => {
                                     const isTop3 = idx < 3;
                                     const rankColor = idx === 0 ? 'text-volt' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-gray-700';
                                     const posColors = {
@@ -326,8 +275,7 @@ const LeagueDetail = () => {
                                         'ALA': 'bg-volt/20 text-volt border-volt/30',
                                         'PIVÔ': 'bg-red-500/20 text-red-400 border-red-500/30'
                                     };
-                                    const posColorClass = posColors[item.pos?.toUpperCase()] || 'bg-white/5 text-gray-500 border-white/10';
-
+                                    
                                     return (
                                         <motion.div
                                             key={`${activeTab}-${item.name || item.team_name}-${idx}`}
@@ -338,44 +286,46 @@ const LeagueDetail = () => {
                                             className={`bento-card p-5 flex items-center justify-between group transition-all ${isTop3 ? 'border-volt/30 bg-volt/5 shadow-glow shadow-volt/5' : 'border-white/5 hover:border-white/20'}`}
                                         >
                                             <div className="flex items-center gap-5">
-                                                <div className={`text-xl font-bebas italic w-6 text-center ${rankColor}`}>
-                                                    {idx + 1}
-                                                </div>
+                                                <div className={`text-xl font-bebas italic w-6 text-center ${rankColor}`}>{idx + 1}</div>
                                                 <div className={`w-12 h-12 rounded-2xl bg-black border border-white/5 flex items-center justify-center overflow-hidden shadow-2xl transition-transform group-hover:scale-110 ${isTop3 ? 'border-volt/20' : ''}`}>
-                                                    {activeTab === 'fantasy' ? (
-                                                        item.avatar ? <img src={item.avatar} className="w-full h-full object-cover" alt={item.team_name} /> : <Users size={20} className="text-gray-700" />
-                                                    ) : activeTab === 'athletes' ? (
-                                                        <div className={`w-full h-full flex items-center justify-center font-black text-[9px] italic border-2 rounded-2xl ${posColorClass}`}>
+                                                    {activeTab === 'times' ? (
+                                                        item.avatar ? <img src={item.avatar} className="w-full h-full object-cover" /> : <Users size={20} className="text-gray-700" />
+                                                    ) : (
+                                                        <div className={`w-full h-full flex items-center justify-center font-black text-[9px] italic border-2 rounded-2xl ${posColors[item.pos?.toUpperCase()] || 'bg-white/5 text-gray-500 border-white/10'}`}>
                                                             {item.pos?.substring(0, 3).toUpperCase()}
                                                         </div>
-                                                    ) : (
-                                                        <Shield size={20} className="text-volt opacity-50" />
                                                     )}
                                                 </div>
-                                                <div className="flex flex-col gap-1">
+                                                <div 
+                                                    className={`flex flex-col gap-1 ${activeTab === 'times' && isLeagueOwner ? 'cursor-pointer hover:opacity-70' : ''}`}
+                                                    onClick={() => {
+                                                        if (activeTab === 'times' && isLeagueOwner && item.user_id !== user.id) {
+                                                            setSelectedMember(item);
+                                                        }
+                                                    }}
+                                                >
                                                     <span className={`text-sm font-bebas italic text-white uppercase tracking-tight leading-none ${isTop3 ? 'text-volt' : ''}`}>
-                                                        {activeTab === 'fantasy' ? item.team_name : item.name}
+                                                        {activeTab === 'times' ? item.team_name : item.name}
                                                     </span>
                                                     <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest leading-none">
-                                                        {activeTab === 'fantasy' ? `COMANDANTE: ${item.user_name}` : activeTab === 'athletes' ? `EQUIPE: LIGA REAL` : 'CLUBE DA LIGA'}
+                                                        {activeTab === 'times' ? `COMANDANTE: ${item.user_name}` : 'LIGA REAL'}
+                                                        {activeTab === 'times' && item.role === 'ADMIN' && <span className="text-volt"> • ADMIN</span>}
+                                                        {activeTab === 'times' && item.role === 'OWNER' && <span className="text-volt"> • DONO</span>}
                                                     </span>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className={`text-2xl font-bebas italic leading-none ${isTop3 ? 'text-volt' : 'text-white'}`}>
-                                                    {item.points.toFixed(1)}
-                                                </div>
+                                                <div className={`text-2xl font-bebas italic leading-none ${isTop3 ? 'text-volt' : 'text-white'}`}>{item.points.toFixed(1)}</div>
                                                 <span className="text-[7px] font-black text-gray-700 uppercase tracking-[0.2em] mt-1 block">PTS</span>
                                             </div>
                                         </motion.div>
                                     );
                                 })}
                             </AnimatePresence>
-
-                            {(activeTab === 'fantasy' ? userLeaderboard : activeTab === 'athletes' ? athleteLeaderboard : teamLeaderboard).length === 0 && (
+                            {(activeTab === 'times' ? userLeaderboard : filteredAthletes).length === 0 && (
                                 <div className="py-24 text-center flex flex-col items-center gap-6 opacity-20">
                                     <Activity size={48} />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">Nenhum registro encontrado nesta arena</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Nenhum registro encontrado</p>
                                 </div>
                             )}
                         </div>
@@ -389,12 +339,9 @@ const LeagueDetail = () => {
                         <div>
                             <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-volt mb-6">Manifesto da Arena</h3>
                             <p className="text-sm font-medium text-gray-400 leading-relaxed italic">
-                                Bem-vindo à arena <span className="text-white font-bold uppercase">{league?.name}</span>. 
-                                Aqui, a tática supera a sorte e cada detalhe do scout define a história.
-                                Prepare sua escalação e conquiste o topo.
+                                Bem-vindo à arena <span className="text-white font-bold uppercase">{league?.name}</span>. Aqui, a tática supera a sorte.
                             </p>
                         </div>
-
                         <div className="grid grid-cols-2 gap-6">
                             <div className="bg-black/40 p-8 rounded-[2.5rem] border border-white/5 flex flex-col gap-2">
                                 <Users size={20} className="text-volt opacity-50 mb-2" />
@@ -407,8 +354,7 @@ const LeagueDetail = () => {
                                 <span className="text-3xl font-bebas italic text-white">{availableRounds.length}</span>
                             </div>
                         </div>
-
-                        <div className="bg-volt/5 p-8 rounded-[2.5rem] border border-volt/20 flex flex-col gap-6 shadow-glow shadow-volt/5">
+                        <div className="bg-volt/5 p-8 rounded-[2.5rem] border border-volt/20 flex flex-col gap-6">
                             <div className="flex flex-col gap-1">
                                 <span className="text-[9px] font-black uppercase text-gray-500 tracking-[0.3em]">CHAVE DE ACESSO</span>
                                 <span className="text-3xl font-bebas italic text-volt tracking-[0.2em] uppercase">{league?.invite_code || '------'}</span>
@@ -416,9 +362,9 @@ const LeagueDetail = () => {
                             <button
                                 onClick={() => {
                                     navigator.clipboard.writeText(league?.invite_code);
-                                    alert('Chave copiada para a área de transferência!');
+                                    alert('Chave copiada!');
                                 }}
-                                className="w-full py-5 bg-white text-black rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 shadow-2xl"
+                                className="w-full py-5 bg-white text-black rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-2xl"
                             >
                                 <Copy size={16} /> COPIAR CHAVE
                             </button>
@@ -426,6 +372,47 @@ const LeagueDetail = () => {
                     </div>
                 </section>
             )}
+
+            {/* Promotion Modal */}
+            <AnimatePresence>
+                {selectedMember && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/95 backdrop-blur-2xl">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="w-full max-w-sm glass-premium p-10 rounded-[3.5rem] border border-white/10 flex flex-col gap-8 text-center"
+                        >
+                            <div className="flex flex-col items-center gap-4">
+                                <Users className="text-volt" size={48} />
+                                <h2 className="text-2xl font-bebas text-white italic tracking-tight uppercase">Gestão de Membro</h2>
+                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
+                                    Deseja tornar <span className="text-volt">{selectedMember.team_name}</span> um administrador da Arena?
+                                </p>
+                            </div>
+
+                            {selectedMember.role !== 'ADMIN' && selectedMember.role !== 'OWNER' && (
+                                <button
+                                    onClick={async () => {
+                                        await promoteToAdmin(currentLeagueId, selectedMember.user_id);
+                                        setSelectedMember(null);
+                                    }}
+                                    className="w-full bg-volt text-black py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl active:scale-95 transition-all"
+                                >
+                                    Tornar Admin
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => setSelectedMember(null)}
+                                className="w-full bg-white/5 text-gray-500 py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:text-white transition-all"
+                            >
+                                Cancelar
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

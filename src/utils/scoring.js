@@ -14,7 +14,6 @@ export const SCOUT_WEIGHTS = {
     GOL: 5.0,
     ASSISTENCIA: 3.0,
     FINALIZACAO_DEFENDIDA: 1.2,
-    DESARME: 1.5,
     GOLEIRO_LINHA_GOL: 8.0,
     CARTAO_AMARELO: -2.0,
     CARTAO_VERMELHO: -5.0,
@@ -23,7 +22,6 @@ export const SCOUT_WEIGHTS = {
     GOL_SOFRIDO: -1.0, // Apenas para goleiros
     SG_GOLEIRO: 5.0,
     SG_FIXO: 3.0,
-    SG_LINHA: 1.0,
 };
 
 /**
@@ -43,7 +41,6 @@ export function calculateScore(stats, pos, isCaptain = false) {
     score += (stats.gols || 0) * SCOUT_WEIGHTS.GOL;
     score += (stats.assistencias || 0) * SCOUT_WEIGHTS.ASSISTENCIA;
     score += (stats.finalizacoes_defendidas || 0) * SCOUT_WEIGHTS.FINALIZACAO_DEFENDIDA;
-    score += (stats.desarmes || 0) * SCOUT_WEIGHTS.DESARME;
     score += (stats.gols_goleiro_linha || 0) * SCOUT_WEIGHTS.GOLEIRO_LINHA_GOL;
 
     // Scouts Negativos
@@ -52,12 +49,11 @@ export function calculateScore(stats, pos, isCaptain = false) {
     score += (stats.gol_contra || 0) * SCOUT_WEIGHTS.GOL_CONTRA;
     score += (stats.faltas_cometidas || 0) * SCOUT_WEIGHTS.FALTA_COMETIDA;
 
-    // SG (Saldo de Gols)
+    // SG (Saldo de Gols) - Apenas Goleiro e Fixo
     const sofreuGol = stats.equipe_sofreu_gol || stats.gols_sofridos > 0;
     if (!sofreuGol) {
         if (position === 'GOLEIRO') score += SCOUT_WEIGHTS.SG_GOLEIRO;
         else if (position === 'FIXO') score += SCOUT_WEIGHTS.SG_FIXO;
-        else score += SCOUT_WEIGHTS.SG_LINHA;
     }
 
     // Penalidade para Goleiro (Gols Sofridos)

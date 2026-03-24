@@ -54,7 +54,8 @@ const ProfileAction = ({ icon: Icon, title, onClick, color = "text-gray-500", re
 const Profile = () => {
     const {
         user, profile, signOut, myFollowedLeaguesDetails,
-        fetchMyFollowedLeagues, currentLeagueId, updateProfile
+        fetchMyLeagues, currentLeagueId, updateProfile, supabase,
+        setNotification, loading
     } = useStore();
     const navigate = useNavigate();
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -73,9 +74,14 @@ const Profile = () => {
         'https://api.dicebear.com/7.x/avataaars/svg?seed=Salem'
     ];
 
+    const [adminAuth, setAdminAuth] = useState({ isOpen: false, leagueId: null, code: '' });
+    const [isCreatingLeague, setIsCreatingLeague] = useState(false);
+    const [newLeagueName, setNewLeagueName] = useState('');
+    const [newLeaguePassword, setNewLeaguePassword] = useState('');
+
     useEffect(() => {
-        fetchMyFollowedLeagues();
-    }, [fetchMyFollowedLeagues]);
+        fetchMyLeagues();
+    }, [fetchMyLeagues]);
 
     const isGlobalAdmin = profile?.role === 'ADMIN';
     const hasLeagueManagement = myFollowedLeaguesDetails.some(l => l.role === 'OWNER' || l.role === 'ADMIN');
@@ -93,123 +99,283 @@ const Profile = () => {
         setIsAvatarModalOpen(false);
     };
 
+    const handleOpenAdmin = (leagueId) => {
+        const league = myFollowedLeaguesDetails.find(l => l.id === leagueId);
+        if (league?.role === 'OWNER') {
+            useStore.getState().setCurrentLeague(leagueId);
+            navigate('/admin/dashboard');
+            return;
+        }
+        setAdminAuth({ isOpen: true, leagueId, code: '' });
+    };
+
+    const handleAdminSubmit = async () => {
+        try {
+            const { data: memberData } = await supabase
+                .from('league_members')
+                .select('admin_code')
+                .eq('league_id', adminAuth.leagueId)
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            const league = myFollowedLeaguesDetails.find(l => l.id === adminAuth.leagueId);
+            const MASTER_CODE = 'CTOLA'; // Global override
+            
+            const isAuthorized = (memberData?.admin_code && memberData.admin_code === adminAuth.code) || 
+                               adminAuth.code === MASTER_CODE || 
+                               adminAuth.code === league?.invite_code ||
+                               adminAuth.code === league?.management_password;
+
+            if (isAuthorized) {
+                useStore.getState().setCurrentLeague(adminAuth.leagueId);
+                setAdminAuth({ isOpen: false, leagueId: null, code: '' });
+                navigate('/admin/dashboard');
+            } else {
+                alert('Código ou Senha de gestão incorretos!');
+            }
+        } catch (err) {
+            console.error('Admin Auth Error:', err);
+            alert('Erro ao validar acesso.');
+        }
+    };
+
+    const handleCreateLeague = async () => {
+        if (!newLeagueName) return;
+        const { error, data } = await useStore.getState().createLeague(newLeagueName, true, newLeaguePassword);
+        
+        if (error) {
+            setNotification({ message: error, type: 'error' });
+        } else if (data) {
+            setNotification({ message: 'ARENA FUNDADA COM SUCESSO!', type: 'success' });
+            setIsCreatingLeague(false);
+            setNewLeagueName('');
+            setNewLeaguePassword('');
+            fetchMyLeagues();
+            // Redirecionar para o Dashboard da nova liga
+            navigate('/admin/dashboard');
+        }
+    };
+
     return (
         <div className="flex flex-col gap-10 animate-fade-in pb-32">
             <header className="flex justify-between items-end px-1">
-                <h1 className="text-4xl font-bebas italic text-white tracking-tighter leading-none">MEU <span className="text-volt">PERFIL</span></h1>
+                <h1 className="text-4xl font-bebas italic text-white tracking-tighter leading-none">HUB DE <span className="text-volt">LIGAS</span></h1>
                 <motion.button
-                    whileHover={{ rotate: 90 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-4 bento-card text-gray-500 hover:text-white transition-all"
+                    whileHover={{ scale: 1.05 }}
+                    onClick={() => setIsCreatingLeague(true)}
+                    className="p-4 bento-card text-volt bg-volt/10 border-volt/20 flex items-center gap-2"
                 >
-                    <Settings className="w-5 h-5" />
+                    <Plus className="w-5 h-5" />
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2">Nova Liga</span>
                 </motion.button>
             </header>
 
-            <div className="flex flex-col items-center gap-8 py-4">
-                <div className="relative group">
-                    <div className="absolute inset-0 bg-volt/10 blur-[60px] rounded-full scale-150 group-hover:bg-volt/20 transition-all duration-1000" />
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        onClick={() => setIsAvatarModalOpen(true)}
-                        className="w-40 h-40 rounded-[4.5rem] bg-black border-4 border-white/5 flex items-center justify-center text-5xl font-black shadow-2xl relative z-10 uppercase overflow-hidden hover:border-volt/40 transition-all"
-                    >
-                        {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} className="w-full h-full object-cover" />
-                        ) : (
-                            <span className="font-bebas italic text-volt">{initials}</span>
-                        )}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                            <Plus className="text-volt" size={32} />
+            <div className="flex items-center gap-6 bento-card p-6 bg-white/5 border-white/5">
+                 <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    className="w-20 h-20 rounded-3xl bg-black border-2 border-white/5 flex items-center justify-center relative overflow-hidden group"
+                >
+                    {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} className="w-full h-full object-cover" />
+                    ) : (
+                        <span className="font-bebas text-volt text-2xl">{initials}</span>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                        <Plus className="text-volt" size={16} />
+                    </div>
+                </motion.button>
+                <div className="flex flex-col gap-1">
+                    <h2 className="text-2xl font-bebas italic text-white tracking-tight uppercase leading-none">{profile?.name || 'Usuário'}</h2>
+                    <span className="text-[8px] text-gray-600 font-bold uppercase tracking-[0.3em]">Comandante de Ligas</span>
+                </div>
+                <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="ml-auto p-4 text-gray-600 hover:text-white"
+                >
+                    <Settings size={20} />
+                </motion.button>
+            </div>
+
+            {/* My Leagues List */}
+            <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between px-1">
+                    <h3 className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em]">Minhas Participações</h3>
+                    <div className="h-px flex-1 bg-white/5 ml-4" />
+                </div>
+
+                <div className="flex flex-col gap-4">
+                    {myFollowedLeaguesDetails.map((league) => (
+                        <div key={league.id} className="bento-card p-6 flex flex-col gap-6 bg-[#0a0a0a] border-white/5 hover:border-white/10 transition-all">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-black border border-white/5 flex items-center justify-center">
+                                        <Shield className="text-volt opacity-50" size={20} />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h4 className="text-lg font-bebas italic text-white tracking-tight leading-none uppercase">{league.name}</h4>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest">ID: {league.invite_code || '---'}</span>
+                                            <div className="w-1 h-1 rounded-full bg-gray-600" />
+                                            <span className="text-[7px] font-black text-volt uppercase tracking-widest">{league.role}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                     <button
+                                        onClick={() => {
+                                            useStore.getState().setCurrentLeague(league.id);
+                                            navigate(`/league/${league.id}`);
+                                        }}
+                                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-gray-400 hover:text-white"
+                                    >
+                                        <Search size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        useStore.getState().setCurrentLeague(league.id);
+                                        navigate(`/league/${league.id}`);
+                                    }}
+                                    className="flex-1 py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all text-white border border-white/5"
+                                >
+                                    Abrir Arena
+                                </button>
+                                {(league.role === 'OWNER' || league.role === 'ADMIN') && (
+                                    <button
+                                        onClick={() => handleOpenAdmin(league.id)}
+                                        className="flex-1 py-4 bg-volt text-black rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-2xl shadow-volt/20"
+                                    >
+                                        Gestão da Liga
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </motion.button>
-                    {canManage && (
-                        <div className="absolute -bottom-2 -right-2 bg-volt p-3.5 rounded-[1.5rem] border-[6px] border-pure-black shadow-2xl z-20">
-                            <ShieldCheck className="w-6 h-6 text-black" />
+                    ))}
+
+                    {myFollowedLeaguesDetails.length === 0 && (
+                        <div className="py-16 flex flex-col items-center justify-center text-center gap-4 opacity-20">
+                            <Search size={48} />
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Nenhuma liga encontrada.<br/>Comece agora mesmo!</p>
                         </div>
                     )}
                 </div>
-                
-                <div className="text-center z-10 space-y-2">
-                    <h2 className="text-4xl font-bebas italic text-white tracking-tight uppercase leading-none">{profile?.name || 'Usuário'}</h2>
-                    <div className="flex items-center justify-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${canManage ? 'bg-volt animate-pulse' : 'bg-gray-700'}`} />
-                        <span className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">
-                            {isGlobalAdmin ? 'MASTER ADMIN' : hasLeagueManagement ? 'DIRETOR DE LIGA' : 'COMANDANTE'}
-                        </span>
-                    </div>
-                </div>
             </div>
 
-            {/* Premium Bento Stats */}
-            <div className="grid grid-cols-6 grid-rows-2 gap-4 h-[220px]">
-                <div className="col-span-4 row-span-2 bento-card flex flex-col justify-between p-6">
-                    <div className="flex justify-between items-start">
-                        <div className="w-12 h-12 rounded-2xl bg-volt/10 flex items-center justify-center border border-volt/20">
-                            <Trophy className="text-volt" size={24} />
-                        </div>
-                        <span className="text-[8px] font-black uppercase text-gray-600 tracking-widest">Ranking Global</span>
-                    </div>
-                    <div>
-                        <div className="text-5xl font-bebas italic text-white leading-none">#--</div>
-                        <div className="flex items-center gap-1.5 mt-2">
-                            <TrendingUp className="text-volt" size={12} />
-                            <span className="text-[10px] font-bold text-volt">TOP 0.1%</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-span-2 row-span-1 bento-card p-5 flex flex-col justify-between bg-volt/5 border-volt/20">
-                    <Wallet className="text-volt" size={20} />
-                    <div>
-                        <div className="text-xs font-black text-gray-500 uppercase tracking-widest leading-none mb-1">C$</div>
-                        <div className="text-xl font-bebas text-white leading-none">100.0</div>
-                    </div>
-                </div>
-                <div className="col-span-2 row-span-1 bento-card p-5 flex flex-col justify-between">
-                    <Zap className="text-volt" size={20} />
-                    <div>
-                        <div className="text-xs font-black text-gray-500 uppercase tracking-widest leading-none mb-1">PONTOS</div>
-                        <div className="text-xl font-bebas text-white leading-none">0.00</div>
-                    </div>
-                </div>
-            </div>
+            <button
+                onClick={handleSignOut}
+                className="w-full mt-10 py-8 text-[11px] font-bebas italic uppercase text-gray-700 hover:text-white transition-all tracking-[0.4em] flex items-center justify-center gap-4"
+            >
+                <div className="w-8 h-px bg-white/5" />
+                ENCERRAR SESSÃO
+                <div className="w-8 h-px bg-white/5" />
+            </button>
 
-            {/* Actions Grid */}
-            <div className="flex flex-col gap-4">
-                <ProfileAction
-                    icon={Award}
-                    title="Arena de Ligas"
-                    onClick={() => navigate('/explorar')}
-                    color="text-volt"
-                />
-
-                <ProfileAction
-                    icon={History}
-                    title="Linha do Tempo"
-                    onClick={() => alert('Em breve!')}
-                    color="text-white/40"
-                />
-
-                {canManage && (
-                    <ProfileAction
-                        icon={ShieldCheck}
-                        title="Gestão de Arena"
-                        onClick={() => navigate('/admin/dashboard')}
-                        color="text-volt"
-                        restricted
-                    />
+            {/* Admin Password Modal */}
+            <AnimatePresence>
+                {adminAuth.isOpen && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/95 backdrop-blur-3xl">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="w-full max-w-sm glass-premium rounded-[4rem] border border-white/10 p-10 flex flex-col gap-8 shadow-2xl"
+                        >
+                            <div className="text-center">
+                                <div className="w-16 h-16 rounded-[2rem] bg-volt/10 border border-volt/20 flex items-center justify-center mx-auto mb-6">
+                                    <Lock className="text-volt" size={24} />
+                                </div>
+                                <h2 className="text-3xl font-bebas text-white italic tracking-tight uppercase">Diretoria</h2>
+                                <p className="text-[9px] text-gray-600 font-bold uppercase tracking-[0.3em] mt-2">Código ou Senha de Gestão</p>
+                            </div>
+                            
+                            <div className="flex flex-col gap-4">
+                                <input
+                                    type="password"
+                                    value={adminAuth.code}
+                                    onChange={(e) => setAdminAuth({ ...adminAuth, code: e.target.value.toUpperCase() })}
+                                    placeholder="DIGITE O ACESSO"
+                                    className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl px-6 text-xl font-bebas tracking-[0.5em] text-center text-volt outline-none focus:border-volt/40 transition-all placeholder:tracking-widest"
+                                />
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={() => setAdminAuth({ isOpen: false, leagueId: null, code: '' })}
+                                        className="flex-1 py-5 text-[10px] font-black uppercase tracking-widest text-gray-500"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button 
+                                        onClick={handleAdminSubmit}
+                                        className="flex-[2] py-5 bg-volt text-black rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-volt/20"
+                                    >
+                                        ENTRAR
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
+            </AnimatePresence>
 
-                <button
-                    onClick={handleSignOut}
-                    className="w-full mt-10 py-8 text-[11px] font-bebas italic uppercase text-gray-700 hover:text-white transition-all tracking-[0.4em] flex items-center justify-center gap-4"
-                >
-                    <div className="w-8 h-px bg-white/5" />
-                    ENCERRAR SESSÃO
-                    <div className="w-8 h-px bg-white/5" />
-                </button>
-            </div>
+            {/* Create League Modal */}
+            <AnimatePresence>
+                {isCreatingLeague && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/95 backdrop-blur-3xl">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="w-full max-w-sm glass-premium rounded-[4rem] border border-white/10 p-10 flex flex-col gap-8 shadow-2xl"
+                        >
+                            <div className="text-center">
+                                <h2 className="text-3xl font-bebas text-white italic tracking-tight">NOVA ARENA</h2>
+                                <p className="text-[9px] text-gray-600 font-bold uppercase tracking-[0.3em] mt-2">FUNDAR NOVA LIGA</p>
+                            </div>
+                            
+                            <div className="flex flex-col gap-4">
+                                <input
+                                    type="text"
+                                    value={newLeagueName}
+                                    onChange={(e) => setNewLeagueName(e.target.value.toUpperCase())}
+                                    placeholder="NOME DA LIGA"
+                                    className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl px-6 text-sm font-black tracking-widest text-center text-white outline-none focus:border-volt/40 transition-all uppercase"
+                                />
+                                <input
+                                    type="password"
+                                    value={newLeaguePassword}
+                                    onChange={(e) => setNewLeaguePassword(e.target.value.toUpperCase())}
+                                    placeholder="SENHA DE GESTÃO (OPCIONAL)"
+                                    className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl px-6 text-sm font-black tracking-widest text-center text-white outline-none focus:border-volt/40 transition-all uppercase placeholder:tracking-widest"
+                                />
+                                <button 
+                                    onClick={handleCreateLeague}
+                                    disabled={!newLeagueName || loading}
+                                    className={`w-full py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-2 ${newLeagueName ? 'bg-volt text-black shadow-volt/20' : 'bg-gray-800 text-gray-500'}`}
+                                >
+                                    {loading ? (
+                                        <div className="flex items-center gap-2">
+                                            <Zap className="w-4 h-4 animate-pulse" />
+                                            <span>PROCESSANDO...</span>
+                                        </div>
+                                    ) : (
+                                        'FUNDAR AGORA'
+                                    )}
+                                </button>
+                                <button 
+                                    onClick={() => setIsCreatingLeague(false)}
+                                    className="w-full py-4 text-[9px] font-black uppercase tracking-[0.2em] text-gray-600"
+                                >
+                                    Voltar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Drawers and Modals */}
             <AnimatePresence>
@@ -236,30 +402,6 @@ const Profile = () => {
                                 <button onClick={() => setIsSettingsOpen(false)} className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
                                     <X size={20} className="text-gray-500" />
                                 </button>
-                            </div>
-
-                            <div className="flex flex-col gap-6">
-                                <span className="text-[10px] font-black uppercase text-volt tracking-[0.3em]">Minhas Ligas Ativas</span>
-                                <div className="flex flex-col gap-3 overflow-y-auto no-scrollbar max-h-[40vh]">
-                                    {myFollowedLeaguesDetails.map((league) => (
-                                        <button
-                                            key={league.id}
-                                            onClick={() => navigate(`/league/${league.id}`)}
-                                            className={`bento-card p-5 flex items-center justify-between border-white/5 ${currentLeagueId === league.id ? 'bg-volt/10 border-volt/30 shadow-2xl shadow-volt/5' : 'bg-white/5'}`}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="p-3 rounded-xl bg-black border border-white/10">
-                                                    <Shield className={currentLeagueId === league.id ? 'text-volt' : 'text-gray-500'} size={20} />
-                                                </div>
-                                                <div className="text-left">
-                                                    <h4 className={`text-sm font-black uppercase tracking-tight leading-none ${currentLeagueId === league.id ? 'text-volt' : 'text-white'}`}>{league.name}</h4>
-                                                    <p className="text-[7px] text-gray-600 font-black uppercase tracking-widest mt-1.5">{league.role}</p>
-                                                </div>
-                                            </div>
-                                            {currentLeagueId === league.id && <div className="w-2 h-2 rounded-full bg-volt shadow-glow shadow-volt" />}
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
 
                             <div className="pt-6 border-t border-white/5 flex flex-col gap-2">

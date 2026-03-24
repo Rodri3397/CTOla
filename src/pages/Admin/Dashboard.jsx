@@ -14,7 +14,7 @@ export default function AdminDashboard() {
         fetchLeagueMembers, updateMemberRole, leagueMembers
     } = useStore();
 
-    const activeRound = rounds.find(r => r.id === activeRoundId);
+    const activeRound = rounds?.find(r => r.id === activeRoundId);
 
     const [activeTab, setActiveTab] = useState('overview');
     const [teamName, setTeamName] = useState('');
@@ -49,9 +49,16 @@ export default function AdminDashboard() {
     const [scoutFeed, setScoutFeed] = useState([]);
 
     useEffect(() => {
-        setIsAuthorized(false); // Reset auth on league change
-        setPassword('');
-        setPassError(false);
+        const leagueDetails = myLeagues.find(l => l.id === currentLeagueId);
+        const role = leagueDetails?.role || leagueDetails?.user_role;
+        
+        if (role === 'OWNER' || role === 'ADMIN') {
+            setIsAuthorized(true);
+        } else {
+            setIsAuthorized(false);
+            setPassword('');
+            setPassError(false);
+        }
         
         fetchMyLeagues();
         if (currentLeagueId) {
@@ -60,18 +67,24 @@ export default function AdminDashboard() {
             fetchRounds();
             fetchLeagueMembers(currentLeagueId);
         }
-    }, [fetchMyLeagues, fetchTeams, fetchAthletes, fetchRounds, fetchLeagueMembers, currentLeagueId]);
+    }, [fetchMyLeagues, fetchTeams, fetchAthletes, fetchRounds, fetchLeagueMembers, currentLeagueId, myLeagues]);
 
     const handleCreateLeague = async () => {
-        if (!newLeagueName || !leagueAdminCode) return;
+        if (!newLeagueName) return setNotification({ message: 'DÊ UM NOME À LIGA!', type: 'error' });
+        if (!leagueAdminCode) return setNotification({ message: 'DEFINA UMA SENHA MESTRE!', type: 'error' });
+        
         const { error, data } = await createLeague(newLeagueName, isPublic, leagueAdminCode.toUpperCase());
-        if (!error && data) {
+        
+        if (error) {
+            setNotification({ message: error, type: 'error' });
+        } else if (data) {
+            setNotification({ message: 'LIGA LANÇADA COM SUCESSO!', type: 'success' });
             setNewLeagueName('');
             setLeagueAdminCode('');
             setShowCreateLeague(false);
             setIsPublic(true);
-            setCurrentLeague(data[0].id); // Select the new league immediately
             setIsAuthorized(true);
+            // navigate to dashboard or refresh is handled by store setting currentLeagueId
         }
     };
 
@@ -207,10 +220,20 @@ export default function AdminDashboard() {
 
     if (!currentLeagueId && myLeagues.length === 0 && !showCreateLeague) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 px-6">
-                <Trophy className="text-neon mb-8" size={64} />
-                <h2 className="text-2xl font-black italic uppercase text-white text-center">Nenhuma Liga Encontrada</h2>
-                <button onClick={() => setShowCreateLeague(true)} className="mt-10 px-10 py-5 bg-neon text-black rounded-2xl font-black uppercase shadow-xl hover:scale-105 active:scale-95 transition-all">Criar Minha Liga</button>
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                <div className="w-24 h-24 bg-neon/10 rounded-[2.5rem] flex items-center justify-center border border-neon/20 shadow-2xl shadow-neon/10 animate-pulse mb-10">
+                    <Trophy className="text-neon" size={42} />
+                </div>
+                <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter">Prepare a Arena</h2>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em] mt-4 max-w-[200px] leading-loose">
+                    Você ainda não fundou nenhuma liga. Comece agora!
+                </p>
+                <button 
+                    onClick={() => setShowCreateLeague(true)} 
+                    className="mt-12 px-12 py-6 bg-neon text-black rounded-3xl font-black uppercase text-xs shadow-[0_20px_40px_rgba(223,255,0,0.2)] hover:scale-105 active:scale-95 transition-all tracking-widest"
+                >
+                    Criar Minha Liga
+                </button>
             </div>
         );
     }
@@ -241,7 +264,7 @@ export default function AdminDashboard() {
                         {[
                             { id: 'overview', label: 'Geral', icon: LayoutDashboard },
                             { id: 'scouts', label: 'Pontuar', icon: Trophy },
-                            { id: 'teams', label: `Times`, icon: Shield },
+                            { id: 'teams', label: `Clubes`, icon: Shield },
                             { id: 'athletes', label: `Atletas`, icon: Users },
                             { id: 'members', label: 'Membros', icon: UserPlus }
                         ].map(tab => (
@@ -412,7 +435,20 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex gap-4">
                                 <button onClick={() => setShowCreateLeague(false)} className="flex-1 py-5 rounded-2xl text-[10px] font-black text-gray-600 uppercase hover:text-white transition-all">Sair</button>
-                                <button onClick={handleCreateLeague} disabled={loading || !newLeagueName || !leagueAdminCode} className="flex-[2] bg-volt text-black py-5 rounded-2xl font-black text-[11px] uppercase shadow-[0_10px_25px_rgba(223,255,0,0.3)] hover:scale-105 active:scale-95 transition-all">Lançar Liga</button>
+                                <button 
+                                    onClick={handleCreateLeague} 
+                                    disabled={loading || !newLeagueName || !leagueAdminCode} 
+                                    className="flex-[2] bg-volt text-black py-5 rounded-2xl font-black text-[11px] uppercase shadow-[0_10px_25px_rgba(223,255,0,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="animate-spin" size={16} />
+                                            <span>PROCESSANDO...</span>
+                                        </>
+                                    ) : (
+                                        'Lançar Liga'
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </motion.div>
@@ -465,13 +501,14 @@ export default function AdminDashboard() {
                                             <div className={`w-2 h-2 rounded-full ${activeRound?.status === 'open' ? 'bg-volt animate-pulse' : 'bg-red-500'}`} />
                                         </div>
                                         <span className="text-2xl font-bebas uppercase italic text-white tracking-widest">
-                                            {activeRound?.status === 'open' ? 'ABERTO' : 'FECHADO'}
+                                            {!activeRound ? 'AGUARDANDO' : activeRound?.status === 'open' ? 'ABERTO' : 'FECHADO'}
                                         </span>
                                         <button 
+                                            disabled={loading || !activeRound}
                                             onClick={() => updateRoundStatus(activeRoundId, activeRound?.status === 'open' ? 'locked' : 'open')} 
-                                            className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] transition-all ${activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-volt text-black shadow-lg shadow-volt/10'}`}
+                                            className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] transition-all ${!activeRound ? 'bg-white/5 text-gray-700 border border-white/5 opacity-50 cursor-not-allowed' : activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-volt text-black shadow-lg shadow-volt/10'}`}
                                         >
-                                            {activeRound?.status === 'open' ? 'TRAVAR MERCADO' : 'ABRIR PARA ESCALACAO'}
+                                            {!activeRound ? 'SEM RODADA ATIVA' : activeRound?.status === 'open' ? 'TRAVAR MERCADO' : 'ABRIR PARA ESCALACAO'}
                                         </button>
                                     </div>
 
@@ -481,13 +518,26 @@ export default function AdminDashboard() {
                                             RODADA {activeRound?.number || 1}
                                             {loading && <Loader2 className="animate-spin" size={18} />}
                                         </span>
-                                        <button onClick={async () => {
-                                            if (!activeRoundId) { await startNextRound(currentLeagueId); return; }
-                                            if (window.confirm('Encerrar rodada? Isso salvará os pontos finais.')) {
-                                                const { error } = await finishRound(activeRoundId);
-                                                if (!error) await startNextRound(currentLeagueId);
-                                            }
-                                        }} className="w-full py-4 bg-white/5 text-white border border-white/10 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all">VIRAR PARA PROXIMA</button>
+                                        <button 
+                                            disabled={loading}
+                                            onClick={async () => {
+                                                if (!activeRoundId) { 
+                                                    const res = await startNextRound(currentLeagueId); 
+                                                    if (!res.error) setNotification({ message: 'PRIMEIRA RODADA INICIADA!', type: 'success' });
+                                                    return; 
+                                                }
+                                                if (window.confirm(`Encerrar Rodada ${activeRound?.number}? Isso salvará os pontos finais e abrirá a próxima.`)) {
+                                                    const { error } = await finishRound(activeRoundId);
+                                                    if (!error) {
+                                                        const nextRes = await startNextRound(currentLeagueId);
+                                                        if (!nextRes.error) setNotification({ message: 'RODADA ENCERRADA E NOVA INICIADA!', type: 'success' });
+                                                    }
+                                                }
+                                            }} 
+                                            className="w-full py-4 bg-white/5 text-white border border-white/10 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all disabled:opacity-50"
+                                        >
+                                            {loading ? 'PROCESSANDO...' : activeRoundId ? 'VIRAR PARA PROXIMA' : 'INICIAR COMPETIÇÃO'}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -504,7 +554,7 @@ export default function AdminDashboard() {
                                 <Shield className="text-gray-700 group-hover:text-volt transition-colors" size={20} />
                                 <div className="flex flex-col">
                                     <span className="text-3xl font-bebas text-white leading-none">{teams.length}</span>
-                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest mt-1">TIMES DA LIGA</span>
+                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest mt-1">CLUBES DA LIGA</span>
                                 </div>
                             </div>
                         </div>
@@ -604,7 +654,7 @@ export default function AdminDashboard() {
                                         </div>
                                         <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
                                             <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest flex flex-col gap-1">
-                                                <span>TIME SOFREU GOL?</span>
+                                                <span>CLUBE SOFREU GOL?</span>
                                                 <span className="text-[7px] text-gray-600">Perde bônus SG</span>
                                             </label>
                                             <button 
@@ -748,7 +798,7 @@ export default function AdminDashboard() {
                                     onChange={(e) => setAthlete({ ...athlete, team_id: e.target.value })} 
                                     className="w-full bg-black/50 border border-white/10 rounded-2xl px-5 py-5 text-[10px] font-black uppercase text-white outline-none"
                                 >
-                                    <option value="">SELECIONE O TIME</option>
+                                    <option value="">SELECIONE O CLUBE</option>
                                     {teams.map(t => <option key={t.id} value={t.id}>{t.name.toUpperCase()}</option>)}
                                 </select>
                             </div>

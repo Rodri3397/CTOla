@@ -44,7 +44,7 @@ const Ranking = () => {
                 const userId = s.user_id;
                 if (!userPoints[userId]) {
                     userPoints[userId] = {
-                        name: s.profiles?.name || 'Inominado',
+                        teamName: s.team_name || 'Sem Nome',
                         avatar: s.profiles?.avatar_url,
                         totalPoints: 0,
                         roundPoints: 0,
@@ -88,22 +88,22 @@ const Ranking = () => {
         <div className="flex flex-col gap-8 animate-fade pb-24 px-1">
             <header className="flex flex-col gap-6">
                 <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-black italic uppercase italic tracking-tighter">Ranking da Liga</h1>
-                    <div className="w-10 h-10 rounded-2xl bg-neon/10 flex items-center justify-center border border-neon/20">
-                        <Trophy className="text-neon" size={20} />
+                    <h1 className="text-2xl font-black italic uppercase tracking-tighter">Tabela da <span className="text-volt">Liga</span></h1>
+                    <div className="w-10 h-10 rounded-2xl bg-volt/10 flex items-center justify-center border border-volt/20">
+                        <Trophy className="text-volt" size={20} />
                     </div>
                 </div>
 
-                <div className="flex gap-2 p-1 bg-[#1a1d23] rounded-2xl border border-white/5">
+                <div className="flex gap-2 p-1 bg-[#0d0d0d] rounded-2xl border border-white/5">
                     <button
                         onClick={() => setFilter('TOTAL')}
-                        className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'TOTAL' ? 'bg-neon text-black neo-shadow' : 'text-gray-500 hover:text-white'}`}
+                        className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'TOTAL' ? 'bg-volt text-black shadow-glow shadow-volt/10' : 'text-gray-500 hover:text-white'}`}
                     >
                         Geral
                     </button>
                     <button
                         onClick={() => setFilter('ROUND')}
-                        className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'ROUND' ? 'bg-neon text-black neo-shadow' : 'text-gray-500 hover:text-white'}`}
+                        className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === 'ROUND' ? 'bg-volt text-black shadow-glow shadow-volt/10' : 'text-gray-500 hover:text-white'}`}
                     >
                         Rodada Atual
                     </button>
@@ -112,8 +112,8 @@ const Ranking = () => {
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
-                    <Loader2 className="w-10 h-10 animate-spin text-neon" />
-                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Calculando Líderes...</span>
+                    <Loader2 className="w-10 h-10 animate-spin text-volt" />
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Calculando Tabela...</span>
                 </div>
             ) : leaderboard.length > 0 ? (
                 <div className="flex flex-col gap-4">
@@ -122,27 +122,27 @@ const Ranking = () => {
                         {leaderboard[1] && (
                             <div className="flex flex-col items-center gap-2">
                                 <div className="relative">
-                                    <div className="w-16 h-16 rounded-[2rem] bg-gray-400/10 border-2 border-gray-400/30 flex items-center justify-center text-2xl relative z-10">🥈</div>
-                                    <div className="absolute -top-2 -right-2 bg-gray-400 text-black w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center border-2 border-[#0f1115]">2</div>
+                                    <div className="w-16 h-16 rounded-[2rem] bg-gray-400/10 border-2 border-gray-400/30 flex items-center justify-center text-2xl relative z-10 opacity-60">🥈</div>
+                                    <div className="absolute -top-2 -right-2 bg-gray-400 text-black w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center border-2 border-black">2</div>
                                 </div>
-                                <span className="text-[8px] font-black uppercase text-gray-500 text-center w-20 truncate">{leaderboard[1].name}</span>
+                                <span className="text-[8px] font-black uppercase text-gray-500 text-center w-24 truncate">{leaderboard[1].teamName}</span>
                             </div>
                         )}
                         <div className="flex flex-col items-center gap-2 scale-125 -mt-8 relative">
-                            <div className="absolute inset-0 bg-neon/20 blur-3xl rounded-full scale-150" />
+                            <div className="absolute inset-0 bg-volt/20 blur-3xl rounded-full scale-150" />
                             <div className="relative">
-                                <div className="w-20 h-20 rounded-[2.5rem] bg-neon/10 border-2 border-neon flex items-center justify-center text-3xl relative z-10 neo-shadow">🥇</div>
-                                <div className="absolute -top-3 -right-3 bg-neon text-black w-8 h-8 rounded-xl text-xs font-black flex items-center justify-center border-4 border-[#0f1115] neo-shadow">1</div>
+                                <div className="w-20 h-20 rounded-[2.5rem] bg-volt/10 border-2 border-volt flex items-center justify-center text-3xl relative z-10 shadow-glow shadow-volt/20">🥇</div>
+                                <div className="absolute -top-3 -right-3 bg-volt text-black w-8 h-8 rounded-xl text-xs font-black flex items-center justify-center border-4 border-black shadow-lg">1</div>
                             </div>
-                            <span className="text-[8px] font-black uppercase text-white text-center w-20 truncate">{leaderboard[0].name}</span>
+                            <span className="text-[8px] font-black uppercase text-white text-center w-24 truncate">{leaderboard[0].teamName}</span>
                         </div>
                         {leaderboard[2] && (
                             <div className="flex flex-col items-center gap-2">
                                 <div className="relative">
-                                    <div className="w-16 h-16 rounded-[2rem] bg-orange-700/10 border-2 border-orange-700/30 flex items-center justify-center text-2xl relative z-10">🥉</div>
-                                    <div className="absolute -top-2 -right-2 bg-orange-700 text-black w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center border-2 border-[#0f1115]">3</div>
+                                    <div className="w-16 h-16 rounded-[2rem] bg-orange-700/10 border-2 border-orange-700/30 flex items-center justify-center text-2xl relative z-10 opacity-60">🥉</div>
+                                    <div className="absolute -top-2 -right-2 bg-orange-700 text-black w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center border-2 border-black">3</div>
                                 </div>
-                                <span className="text-[8px] font-black uppercase text-gray-500 text-center w-20 truncate">{leaderboard[2].name}</span>
+                                <span className="text-[8px] font-black uppercase text-gray-500 text-center w-24 truncate">{leaderboard[2].teamName}</span>
                             </div>
                         )}
                     </div>
@@ -163,12 +163,12 @@ const Ranking = () => {
                                         {user.avatar ? <img src={user.avatar} className="w-full h-full rounded-2xl object-cover" /> : '👤'}
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-white">{user.name}</span>
-                                        <span className="text-[7px] font-bold text-gray-600 uppercase">Clube de Vantagens</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-white">{user.teamName}</span>
+                                        <span className="text-[7px] font-bold text-gray-600 uppercase">Arena Competition</span>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-sm font-black text-neon italic">
+                                    <div className="text-sm font-black text-volt italic">
                                         {(filter === 'TOTAL' ? user.totalPoints : user.roundPoints).toFixed(2)}
                                     </div>
                                     <span className="text-[7px] font-black text-gray-700 uppercase tracking-widest">PTS</span>

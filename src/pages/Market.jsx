@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, ShoppingCart, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../store/useStore';
+import RoundSelector from '../components/RoundSelector';
 
 // Simple SVG Sparkline Component
 const Sparkline = ({ data = [0,0,0], color = '#DFFF00' }) => {
@@ -40,20 +41,26 @@ const SkeletonCard = () => (
 );
 
 export default function Market() {
-    const { athletes, teams, loading, currentLeagueId, rounds, activeRoundId, addToDraftSquad, draftSquad } = useStore();
+    const { 
+        athletes, teams, loading, currentLeagueId, rounds, 
+        activeRoundId, addToDraftSquad, removeFromDraftSquad, draftSquad, myFollowedLeaguesDetails,
+        wallet, setActiveRound
+    } = useStore();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [filterPos, setFilterPos] = useState('TODOS');
     const [sortBy, setSortBy] = useState('price_desc');
 
     const activeRound = rounds.find(r => r.id === activeRoundId);
-    const isMarketOpen = activeRound?.status === 'open' || !activeRound;
+    const isMarketOpen = activeRound?.status === 'open'; // Simplified logic: must be explicitly open
 
     useEffect(() => {
         if (currentLeagueId) {
             useStore.getState().fetchLeagueData();
         }
     }, [currentLeagueId]);
+
+    const leagueName = myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'Liga';
 
     const filteredAthletes = useMemo(() => {
         return (athletes || [])
@@ -78,7 +85,7 @@ export default function Market() {
     }, [draftSquad, athletes]);
 
     const totalCost = Object.values(squadObjects).reduce((acc, curr) => acc + (curr?.price || 0), 0);
-    const patrimony = 100.0;
+    const patrimony = wallet || 100.0;
     const balance = patrimony - totalCost;
 
     if (!currentLeagueId) {
@@ -102,20 +109,65 @@ export default function Market() {
     }
 
     return (
-        <div className="flex flex-col gap-8 pb-36 animate-fade-in">
-            {/* Budget Bar - consistent with MyTeam */}
-            <div className="grid grid-cols-3 gap-3 px-2">
-                <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center bg-black/40">
-                    <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Patrimônio</span>
-                    <span className="text-base font-bebas text-white">C$ {patrimony.toFixed(1)}</span>
-                </div>
-                <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center border-volt/20 bg-volt/5">
-                    <span className="text-[7px] font-black text-volt/60 uppercase tracking-widest">Custo</span>
-                    <span className="text-base font-bebas text-volt">C$ {totalCost.toFixed(1)}</span>
-                </div>
-                <div className="bento-card py-3 px-4 flex flex-col gap-1 items-center bg-black/40">
-                    <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Saldo</span>
-                    <span className={`text-base font-bebas ${balance < 0 ? 'text-electric-crimson' : 'text-white'}`}>C$ {balance.toFixed(1)}</span>
+        <div className="flex flex-col gap-8 pb-36 animate-fade-in relative">
+            
+            {/* Market Closed Overlay */}
+            <AnimatePresence>
+                {!isMarketOpen && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[40] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-10 text-center"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="bento-card border-electric-crimson/30 bg-electric-crimson/5 py-12 px-8 flex flex-col items-center gap-6"
+                        >
+                            <div className="w-20 h-20 rounded-full bg-electric-crimson/10 flex items-center justify-center border border-electric-crimson/20 shadow-glow shadow-electric-crimson/5">
+                                <Search className="text-electric-crimson rotate-45" size={32} />
+                            </div>
+                            <div>
+                                <h2 className="text-4xl font-bebas text-white italic tracking-tighter">MERCADO FECHADO</h2>
+                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em] mt-3">Negociações encerradas para a Rodada atual</p>
+                            </div>
+                            <div className="w-full h-px bg-white/5" />
+                            <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest max-w-[200px] leading-loose italic">
+                                "{leagueName}" bloqueou as movimentações por conta do início das partidas.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    const currentRound = rounds.find(r => r.status === 'open' || r.status === 'active');
+                                    if (currentRound) setActiveRound(currentRound.id);
+                                }}
+                                className="px-8 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white hover:bg-white/10 transition-all uppercase tracking-widest"
+                            >
+                                Voltar para Rodada Atual
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Top Navigation & Stats */}
+            <div className="sticky top-0 z-[50] flex flex-col gap-4 bg-pure-black/60 backdrop-blur-xl -mx-5 px-5 py-6 border-b border-white/5">
+                <RoundSelector />
+                
+                {/* Budget Bar */}
+                <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-col gap-1 items-center">
+                        <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Patrimônio</span>
+                        <span className="text-base font-bebas text-white">C$ {patrimony.toFixed(1)}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 items-center border-x border-white/10">
+                        <span className="text-[7px] font-black text-volt/60 uppercase tracking-widest">Custo</span>
+                        <span className="text-base font-bebas text-volt">C$ {totalCost.toFixed(1)}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 items-center">
+                        <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest">Saldo</span>
+                        <span className={`text-base font-bebas ${balance < 0 ? 'text-electric-crimson' : 'text-white'}`}>C$ {balance.toFixed(1)}</span>
+                    </div>
                 </div>
             </div>
 
@@ -134,7 +186,7 @@ export default function Market() {
                             </span>
                             <div className="w-1 h-1 rounded-full bg-white/5 mx-1" />
                             <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                                VALORIZAÇÃO NESTA LIGA
+                                ARENA: {leagueName}
                             </span>
                         </div>
                     </div>
@@ -231,19 +283,22 @@ export default function Market() {
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.9 }}
                                             onClick={() => {
-                                                if (isMarketOpen && !isHired) {
+                                                if (!isMarketOpen) return;
+                                                if (isHired) {
+                                                    removeFromDraftSquad(athlete);
+                                                } else {
                                                     addToDraftSquad(athlete);
                                                 }
                                             }}
                                             className={`px-5 py-2.5 rounded-2xl text-[8px] font-black uppercase tracking-widest transition-all ${
                                                 isHired 
-                                                ? 'bg-volt/10 text-volt border border-volt/20 cursor-default' 
+                                                ? 'bg-electric-crimson/10 text-electric-crimson border border-electric-crimson/20 hover:bg-electric-crimson hover:text-white' 
                                                 : isMarketOpen 
                                                     ? 'bg-volt text-black shadow-[0_10px_20px_rgba(223,255,0,0.2)] hover:shadow-volt/30' 
                                                     : 'bg-white/5 text-gray-700 border border-white/5 cursor-not-allowed'
                                             }`}
                                         >
-                                            {isHired ? 'ESCALADO' : 'CONTRATAR'}
+                                            {isHired ? 'VENDER' : 'CONTRATAR'}
                                         </motion.button>
                                     </div>
                                 </motion.div>

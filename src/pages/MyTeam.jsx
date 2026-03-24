@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Shield, Loader2 } from 'lucide-react';
+import { Users, Shield, Loader2, Plus } from 'lucide-react';
 import Pitch from '../components/Pitch';
 import AthleteDrawer from '../components/AthleteDrawer';
+import RoundSelector from '../components/RoundSelector';
 
 const MyTeam = () => {
     const {
         athletes, currentLeagueId,
         saveUserSquad, fetchUserSquad, activeRoundId, rounds,
         draftSquad, draftCaptainId, setDraftSquad, setDraftCaptain,
-        myFollowedLeaguesDetails, updateTeamName
+        myFollowedLeaguesDetails, updateTeamName, wallet, setActiveRound
     } = useStore();
     const navigate = useNavigate();
 
@@ -21,32 +22,33 @@ const MyTeam = () => {
     const [isNamingTeam, setIsNamingTeam] = useState(false);
 
     const activeRound = rounds.find(r => r.id === activeRoundId);
-    const isMarketOpen = activeRound?.status === 'open' || !activeRound;
+    const isMarketOpen = activeRound?.status === 'open';
 
     const squadObjects = {};
-    Object.entries(draftSquad).forEach(([slot, id]) => {
+    Object.entries(draftSquad || {}).forEach(([slot, id]) => {
+        if (!athletes || !id) {
+            squadObjects[slot] = null;
+            return;
+        }
         squadObjects[slot] = athletes.find(a => String(a.id) === String(id)) || null;
     });
 
     const currentLeagueMember = myFollowedLeaguesDetails.find(l => l.id === currentLeagueId);
-    const hasTeamName = !!currentLeagueMember?.team_name;
+    const teamName = currentLeagueMember?.team_name;
+    const hasTeamName = !!teamName;
     const isLeagueAdmin = currentLeagueMember?.role === 'OWNER' || currentLeagueMember?.role === 'ADMIN' || currentLeagueMember?.user_role === 'OWNER';
 
     useEffect(() => {
         if (currentLeagueId) {
-            useStore.getState().fetchMyFollowedLeagues(); // Force member data sync
+            useStore.getState().fetchMyLeagues(); // Force member data sync
             useStore.getState().fetchLeagueData();
             loadDbSquad();
         }
     }, [currentLeagueId, activeRoundId]); // Reload squad on round change too
 
     const loadDbSquad = async () => {
-        // Clear draft before loading from DB to avoid "ghosting" between rounds
-        setDraftSquad({});
-        setDraftCaptain(null);
-        
         const dbSquad = await fetchUserSquad();
-        if (dbSquad) {
+        if (dbSquad && Object.keys(draftSquad || {}).length === 0) {
             setDraftSquad(dbSquad.squad_data || {});
             setDraftCaptain(dbSquad.captain_id);
         }
@@ -57,8 +59,7 @@ const MyTeam = () => {
         setIsSaving(true);
         const { error } = await saveUserSquad(draftSquad, draftCaptainId);
         if (!error) {
-            // No alert for better UX, or a less intrusive one
-            get().setNotification({ message: 'Escalação salva!', type: 'success' });
+            useStore.getState().setNotification({ message: 'Escalação salva!', type: 'success' });
         }
         setIsSaving(false);
     };
@@ -66,7 +67,7 @@ const MyTeam = () => {
     const [actionModal, setActionModal] = useState({ isOpen: false, slot: null, athlete: null });
 
     const totalCost = Object.values(squadObjects).reduce((acc, curr) => acc + (curr?.price || 0), 0);
-    const patrimony = 100.0; // This should ideally come from user profile/wallet
+    const patrimony = wallet || 100.0;
     const balance = patrimony - totalCost;
 
     const handleSelectSlot = (slot, pos) => {
@@ -75,6 +76,7 @@ const MyTeam = () => {
     };
 
     const handleRemoveAthlete = (slot) => {
+        if (!isMarketOpen) return;
         const newDraft = { ...draftSquad };
         const removedAthleteId = newDraft[slot];
         newDraft[slot] = null;
@@ -125,8 +127,38 @@ const MyTeam = () => {
     }
 
     return (
-        <div className="flex flex-col gap-6 animate-fade-in pb-32">
-            {/* Sticky Budget Bar - consistent with MyTeam */}
+        <div className="flex flex-col gap-6 animate-fade-in pb-32 relative">
+            
+            {/* Market Closed Overlay */}
+            <AnimatePresence>
+                {!isMarketOpen && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[40] bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center p-10 text-center"
+                    >
+                        <div className="flex flex-col items-center gap-4 bg-black/80 p-8 rounded-[3rem] border border-white/5">
+                            <Shield className="text-volt/30" size={48} />
+                            <h2 className="text-2xl font-bebas text-white uppercase tracking-tight">Escalação Bloqueada</h2>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] max-w-[200px] leading-relaxed">
+                                O mercado fechou para esta rodada. Você não pode mais alterar seu time.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    const currentRound = rounds.find(r => r.status === 'open' || r.status === 'active');
+                                    if (currentRound) setActiveRound(currentRound.id);
+                                }}
+                                className="mt-4 px-8 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white hover:bg-white/10 transition-all uppercase tracking-widest"
+                            >
+                                Voltar para Rodada Atual
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Sticky Budget Bar */}
             <div className="sticky top-0 z-[60] bg-pure-black/60 backdrop-blur-xl -mx-5 px-5 py-4 border-b border-white/5">
                 <div className="grid grid-cols-3 gap-3">
                     <div className="flex flex-col gap-1 items-center">
@@ -146,8 +178,19 @@ const MyTeam = () => {
 
             <header className="px-1 flex justify-between items-center mt-2">
                 <div className="flex flex-col">
-                    <h1 className="text-3xl font-bebas italic text-white tracking-tighter">MEU <span className="text-volt">TIME</span></h1>
-                    <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em]">{activeRound ? `RODADA ${activeRound.number}` : 'CARREGANDO...'}</span>
+                    <h1 className="text-3xl font-bebas italic text-white tracking-tighter uppercase leading-none">
+                        {teamName || 'MEU TIME'}
+                    </h1>
+                    <div className="flex items-center gap-2 mt-2">
+                         <span className="text-[8px] font-black text-volt uppercase tracking-[0.2em]">
+                            {activeRound ? `RODADA ${activeRound.number}` : 'CARREGANDO...'}
+                         </span>
+                         {!isMarketOpen && (
+                            <span className="text-[8px] font-black text-electric-crimson uppercase tracking-[0.2em] animate-pulse">
+                                • MERCADO FECHADO
+                            </span>
+                         )}
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -157,7 +200,7 @@ const MyTeam = () => {
                             !isMarketOpen || balance < 0 ? 'bg-deep-charcoal text-gray-600' : 'bg-volt text-black shadow-xl shadow-volt/20'
                         }`}
                     >
-                        {isSaving ? '...' : 'Confirmar'}
+                        {isSaving ? '...' : 'Salvar'}
                     </button>
                 </div>
             </header>
