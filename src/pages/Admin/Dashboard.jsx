@@ -494,29 +494,29 @@ export default function AdminDashboard() {
                                     <h3 className="text-[10px] font-black uppercase text-volt tracking-[0.3em]">Gestão de Rodada</h3>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
-                                    <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/5 flex flex-col gap-5">
-                                        <div className="flex justify-between items-start">
-                                            <span className="text-[9px] font-black uppercase text-gray-500 italic tracking-widest">Mercado do App</span>
-                                            <div className={`w-2 h-2 rounded-full ${activeRound?.status === 'open' ? 'bg-volt animate-pulse' : 'bg-red-500'}`} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 pt-4">
+                                    <div className="bg-black/60 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 flex flex-col gap-6 shadow-2xl">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-black uppercase text-gray-500 italic tracking-[0.2em]">Mercado do App</span>
+                                            <div className={`w-2.5 h-2.5 rounded-full shadow-lg ${activeRound?.status === 'open' ? 'bg-volt animate-pulse shadow-volt/20' : 'bg-red-500 shadow-red-500/20'}`} />
                                         </div>
-                                        <span className="text-2xl font-bebas uppercase italic text-white tracking-widest">
+                                        <span className="text-3xl font-bebas uppercase italic text-white tracking-[0.1em]">
                                             {!activeRound ? 'AGUARDANDO' : activeRound?.status === 'open' ? 'ABERTO' : 'FECHADO'}
                                         </span>
                                         <button 
                                             disabled={loading || !activeRound}
                                             onClick={() => updateRoundStatus(activeRoundId, activeRound?.status === 'open' ? 'locked' : 'open')} 
-                                            className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] transition-all ${!activeRound ? 'bg-white/5 text-gray-700 border border-white/5 opacity-50 cursor-not-allowed' : activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-volt text-black shadow-lg shadow-volt/10'}`}
+                                            className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${!activeRound ? 'bg-white/5 text-gray-400 border border-white/5 opacity-50 cursor-not-allowed' : activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white' : 'bg-volt text-black shadow-lg shadow-volt/20 hover:scale-[1.02]'}`}
                                         >
                                             {!activeRound ? 'SEM RODADA ATIVA' : activeRound?.status === 'open' ? 'TRAVAR MERCADO' : 'ABRIR PARA ESCALACAO'}
                                         </button>
                                     </div>
 
-                                    <div className="bg-black/40 backdrop-blur-xl p-6 rounded-3xl border border-white/5 flex flex-col gap-5">
-                                        <span className="text-[9px] font-black uppercase text-gray-500 italic tracking-widest">Fase Atual</span>
-                                        <span className="text-2xl font-bebas uppercase italic text-volt flex items-center gap-3 tracking-widest">
-                                            RODADA {activeRound?.number || 1}
-                                            {loading && <Loader2 className="animate-spin" size={18} />}
+                                    <div className="bg-black/60 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 flex flex-col gap-6 shadow-2xl">
+                                        <span className="text-[10px] font-black uppercase text-gray-500 italic tracking-[0.2em]">Fase Atual</span>
+                                        <span className="text-3xl font-bebas uppercase italic text-volt flex items-center gap-4 tracking-[0.1em]">
+                                            RODADA <span className="text-white">{activeRound?.number || 1}</span>
+                                            {loading && <Loader2 className="animate-spin text-volt" size={20} />}
                                         </span>
                                         <button 
                                             disabled={loading}
@@ -534,7 +534,7 @@ export default function AdminDashboard() {
                                                     }
                                                 }
                                             }} 
-                                            className="w-full py-4 bg-white/5 text-white border border-white/10 rounded-2xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all disabled:opacity-50"
+                                            className="w-full py-5 bg-white/5 text-white border border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all duration-300 disabled:opacity-50"
                                         >
                                             {loading ? 'PROCESSANDO...' : activeRoundId ? 'VIRAR PARA PROXIMA' : 'INICIAR COMPETIÇÃO'}
                                         </button>
