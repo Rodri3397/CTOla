@@ -538,29 +538,33 @@ export default function AdminDashboard() {
                                 </div>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 pt-4">
-                                    <div className="bg-black/60 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 flex flex-col gap-6 shadow-2xl">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[10px] font-black uppercase text-gray-500 italic tracking-[0.2em]">Mercado do App</span>
-                                            <div className={`w-2.5 h-2.5 rounded-full shadow-lg ${activeRound?.status === 'open' ? 'bg-volt animate-pulse shadow-volt/20' : 'bg-red-500 shadow-red-500/20'}`} />
+                                    <div className="bg-black/40 backdrop-blur-xl p-6 rounded-[2rem] border border-white/5 flex flex-col gap-5 shadow-2xl group/card relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                                        <div className="flex justify-between items-center relative z-10">
+                                            <span className="text-[9px] font-black uppercase text-gray-500 italic tracking-[0.2em]">Mercado do App</span>
+                                            <div className={`w-3 h-3 rounded-full ${activeRound?.status === 'open' ? 'bg-volt shadow-[0_0_15px_rgba(223,255,0,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`} />
                                         </div>
-                                        <span className="text-3xl font-bebas uppercase italic text-white tracking-[0.1em]">
+                                        <span className="text-2xl font-bebas uppercase italic text-white tracking-[0.1em] relative z-10">
                                             {!activeRound ? 'AGUARDANDO' : activeRound?.status === 'open' ? 'ABERTO' : 'FECHADO'}
                                         </span>
                                         <button 
                                             disabled={loading || !activeRound}
                                             onClick={() => updateRoundStatus(activeRoundId, activeRound?.status === 'open' ? 'locked' : 'open')} 
-                                            className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${!activeRound ? 'bg-white/5 text-gray-400 border border-white/5 opacity-50 cursor-not-allowed' : activeRound?.status === 'open' ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white' : 'bg-volt text-black shadow-lg shadow-volt/20 hover:scale-[1.02]'}`}
+                                            className={`w-full py-4 rounded-xl font-black text-[9px] uppercase tracking-[0.2em] transition-all duration-300 relative z-10 ${!activeRound ? 'bg-white/5 text-gray-500 cursor-not-allowed' : activeRound?.status === 'open' ? 'bg-red-600 text-white shadow-[0_10px_20px_rgba(220,38,38,0.2)] hover:bg-red-500 hover:scale-[1.02]' : 'bg-volt text-black shadow-[0_10px_20px_rgba(223,255,0,0.2)] hover:scale-[1.02]'}`}
                                         >
                                             {!activeRound ? 'SEM RODADA ATIVA' : activeRound?.status === 'open' ? 'TRAVAR MERCADO' : 'ABRIR PARA ESCALACAO'}
                                         </button>
                                     </div>
 
-                                    <div className="bg-black/60 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 flex flex-col gap-6 shadow-2xl">
-                                        <span className="text-[10px] font-black uppercase text-gray-500 italic tracking-[0.2em]">Fase Atual</span>
-                                        <span className="text-3xl font-bebas uppercase italic text-volt flex items-center gap-4 tracking-[0.1em]">
-                                            RODADA <span className="text-white">{activeRound?.number || 1}</span>
-                                            {loading && <Loader2 className="animate-spin text-volt" size={20} />}
-                                        </span>
+                                    <div className="bg-black/40 backdrop-blur-xl p-6 rounded-[2rem] border border-white/5 flex flex-col gap-5 shadow-2xl group/card relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-volt/5 blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                                        <span className="text-[9px] font-black uppercase text-gray-500 italic tracking-[0.2em] relative z-10">Fase Atual</span>
+                                        <div className="flex items-center gap-3 relative z-10">
+                                            <span className="text-2xl font-bebas uppercase italic text-volt tracking-[0.1em]">
+                                                RODADA <span className="text-white">{activeRound?.number || 1}</span>
+                                            </span>
+                                            {loading && <Loader2 className="animate-spin text-volt" size={16} />}
+                                        </div>
                                         <button 
                                             disabled={loading}
                                             onClick={async () => {
@@ -577,9 +581,9 @@ export default function AdminDashboard() {
                                                     }
                                                 }
                                             }} 
-                                            className="w-full py-5 bg-white/5 text-white border border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all duration-300 disabled:opacity-50"
+                                            className="w-full py-4 bg-white/5 text-white border border-white/10 rounded-xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-white/10 transition-all duration-300 disabled:opacity-50 relative z-10"
                                         >
-                                            {loading ? 'PROCESSANDO...' : activeRoundId ? 'VIRAR PARA PROXIMA' : 'INICIAR COMPETIÇÃO'}
+                                            {loading ? '...' : activeRoundId ? 'VIRAR PARA PROXIMA' : 'INICIAR COMPETIÇÃO'}
                                         </button>
                                     </div>
                                 </div>
