@@ -51,7 +51,7 @@ export default function Market() {
     const [filterPos, setFilterPos] = useState('TODOS');
     const [sortBy, setSortBy] = useState('price_desc');
 
-    const activeRound = rounds.find(r => r.id === activeRoundId);
+    const activeRound = (rounds || []).find(r => r.id === activeRoundId);
     const isMarketOpen = activeRound?.status === 'open'; // Simplified logic: must be explicitly open
 
     useEffect(() => {
@@ -60,7 +60,7 @@ export default function Market() {
         }
     }, [currentLeagueId]);
 
-    const leagueName = myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'Liga';
+    const leagueName = (myFollowedLeaguesDetails || []).find(l => l.id === currentLeagueId)?.name || 'Liga';
 
     const filteredAthletes = useMemo(() => {
         return (athletes || [])
@@ -79,7 +79,7 @@ export default function Market() {
     const squadObjects = useMemo(() => {
         const obj = {};
         Object.entries(draftSquad).forEach(([slot, id]) => {
-            obj[slot] = athletes.find(a => String(a.id) === String(id)) || null;
+            obj[slot] = (athletes || []).find(a => String(a.id) === String(id)) || null;
         });
         return obj;
     }, [draftSquad, athletes]);
@@ -138,7 +138,7 @@ export default function Market() {
                             </p>
                             <button
                                 onClick={() => {
-                                    const currentRound = rounds.find(r => r.status === 'open' || r.status === 'active');
+                                    const currentRound = (rounds || []).find(r => r.status === 'open' || r.status === 'active');
                                     if (currentRound) setActiveRound(currentRound.id);
                                 }}
                                 className="px-8 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white hover:bg-white/10 transition-all uppercase tracking-widest"

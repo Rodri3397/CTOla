@@ -7,17 +7,17 @@ export default function RoundSelector({ isAdmin = false }) {
     const { rounds, activeRoundId, setActiveRound, fetchRounds, createRound, loading } = useStore();
 
     useEffect(() => {
-        if (rounds.length === 0) {
+        if ((rounds || []).length === 0) {
             fetchRounds();
         }
-    }, [fetchRounds, rounds.length]);
+    }, [fetchRounds, (rounds || []).length]);
 
-    if (rounds.length === 0 && !isAdmin) return null;
+    if ((rounds || []).length === 0 && !isAdmin) return null;
 
     return (
         <div className="w-full overflow-x-auto no-scrollbar py-2">
             <div className="flex items-center gap-2 px-1">
-                {rounds.map((r) => (
+                {(rounds || []).map((r) => (
                     <button
                         key={r.id}
                         onClick={() => setActiveRound(r.id)}

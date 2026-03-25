@@ -56,7 +56,7 @@ const Ranking = () => {
                 const roundStats = (allStats || []).filter(st => st.round_id === s.round_id);
 
                 Object.entries(s.squad_data || {}).forEach(([slot, athleteId]) => {
-                    const stats = roundStats.find(st => st.athlete_id === athleteId);
+                    const stats = (roundStats || []).find(st => st.athlete_id === athleteId);
                     if (stats) {
                         const isCaptain = s.captain_id === athleteId;
                         // Determine position from slot name as a safe fallback

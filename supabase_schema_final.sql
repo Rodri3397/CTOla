@@ -1,10 +1,14 @@
--- 🏁 CTOlá - SQL MESTRE FINAL (REVISADO E CORRIGIDO)
--- Este script configura toda a estrutura do banco de dados de forma limpa.
+-- 🏁 CTOlá - SQL MESTRE ESTÁVEL V14 (PRODUÇÃO)
+-- Este script configura toda a estrutura do banco de dados de forma consolidada.
 -- Execute no Editor SQL da Supabase: https://supabase.com/dashboard/project/_/sql
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. Perfis de Usuário
+-- ==========================================
+-- 1. ESTRUTURA DE TABELAS
+-- ==========================================
+
+-- Perfis de Usuário
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     name TEXT NOT NULL,
@@ -16,31 +20,31 @@ CREATE TABLE IF NOT EXISTS profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Ligas de Fantasia (Agora com CASCADE no dono)
+-- Ligas de Fantasia
 CREATE TABLE IF NOT EXISTS leagues (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name TEXT NOT NULL,
     owner_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     invite_code TEXT UNIQUE NOT NULL,
-    management_password TEXT, -- Senha master da liga
+    management_password TEXT, 
     is_public BOOLEAN DEFAULT true,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Membros das Ligas
+-- Membros das Ligas
 CREATE TABLE IF NOT EXISTS league_members (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     league_id UUID REFERENCES leagues(id) ON DELETE CASCADE,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     team_name TEXT,
-    role TEXT DEFAULT 'MEMBER', -- 'OWNER', 'ADMIN', 'MEMBER'
-    admin_code TEXT, -- Senha individual de admin
+    role TEXT DEFAULT 'MEMBER', 
+    admin_code TEXT, 
     joined_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(league_id, user_id)
 );
 
--- 4. Times e Atletas do Mundo Real
+-- Times Reais (Internos da Liga)
 CREATE TABLE IF NOT EXISTS teams (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     league_id UUID REFERENCES leagues(id) ON DELETE CASCADE,
@@ -48,28 +52,30 @@ CREATE TABLE IF NOT EXISTS teams (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Atletas
 CREATE TABLE IF NOT EXISTS athletes (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
     league_id UUID REFERENCES leagues(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-    pos TEXT NOT NULL, -- GOLEIRO, FIXO, ALA, PIVO
+    pos TEXT NOT NULL, 
     price DECIMAL(10,2) DEFAULT 10.00,
     status TEXT DEFAULT 'PROVAVEL',
     photo TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Rodadas (Rounds) e Estatísticas (Scouts)
+-- Rodadas
 CREATE TABLE IF NOT EXISTS rounds (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     league_id UUID REFERENCES leagues(id) ON DELETE CASCADE,
     number INTEGER NOT NULL,
-    status TEXT DEFAULT 'open', -- open, locked, finished
+    status TEXT DEFAULT 'open', 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(league_id, number)
 );
 
+-- Estatísticas (Scouts)
 CREATE TABLE IF NOT EXISTS match_stats (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     athlete_id UUID REFERENCES athletes(id) ON DELETE CASCADE,
@@ -93,7 +99,7 @@ CREATE TABLE IF NOT EXISTS match_stats (
     UNIQUE(athlete_id, round_id)
 );
 
--- 6. Escalações (Squads)
+-- Escalações (User Squads)
 CREATE TABLE IF NOT EXISTS user_squads (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -106,7 +112,10 @@ CREATE TABLE IF NOT EXISTS user_squads (
     UNIQUE(user_id, league_id, round_id)
 );
 
--- 8. POLÍTICAS DE SEGURANÇA (RLS) - O PONTO CHAVE CORRIGIDO
+-- ==========================================
+-- 2. POLÍTICAS DE SEGURANÇA (RLS)
+-- ==========================================
+
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leagues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE league_members ENABLE ROW LEVEL SECURITY;
@@ -116,50 +125,68 @@ ALTER TABLE rounds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE match_stats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_squads ENABLE ROW LEVEL SECURITY;
 
--- Limpeza de políticas para evitar duplicidade
-DROP POLICY IF EXISTS "Leitura Pública" ON profiles;
-DROP POLICY IF EXISTS "Leitura Pública" ON leagues;
-DROP POLICY IF EXISTS "Leitura Pública" ON league_members;
-DROP POLICY IF EXISTS "Leitura Pública" ON teams;
-DROP POLICY IF EXISTS "Leitura Pública" ON athletes;
-DROP POLICY IF EXISTS "Leitura Pública" ON rounds;
-DROP POLICY IF EXISTS "Leitura Pública" ON match_stats;
-DROP POLICY IF EXISTS "Leitura Pública" ON user_squads;
+-- Polícias de Leitura (Geral - IF NOT EXISTS)
+-- Nota: O Supabase prefere DROP + CREATE para garantir atualização
+DROP POLICY IF EXISTS "Leitura Pública Profiles" ON profiles;
+CREATE POLICY "Leitura Pública Profiles" ON profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Leitura Pública Leagues" ON leagues;
+CREATE POLICY "Leitura Pública Leagues" ON leagues FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Leitura Pública Members" ON league_members;
+CREATE POLICY "Leitura Pública Members" ON league_members FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Leitura Pública Teams" ON teams;
+CREATE POLICY "Leitura Pública Teams" ON teams FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Leitura Pública Athletes" ON athletes;
+CREATE POLICY "Leitura Pública Athletes" ON athletes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Leitura Pública Rounds" ON rounds;
+CREATE POLICY "Leitura Pública Rounds" ON rounds FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Leitura Pública MatchStats" ON match_stats;
+CREATE POLICY "Leitura Pública MatchStats" ON match_stats FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Leitura Pública Squads" ON user_squads;
+CREATE POLICY "Leitura Pública Squads" ON user_squads FOR SELECT USING (true);
 
--- Políticas de Leitura (Geral)
-CREATE POLICY "Leitura Pública" ON profiles FOR SELECT USING (true);
-CREATE POLICY "Leitura Pública" ON leagues FOR SELECT USING (true);
-CREATE POLICY "Leitura Pública" ON league_members FOR SELECT USING (true);
-CREATE POLICY "Leitura Pública" ON teams FOR SELECT USING (true);
-CREATE POLICY "Leitura Pública" ON athletes FOR SELECT USING (true);
-CREATE POLICY "Leitura Pública" ON rounds FOR SELECT USING (true);
-CREATE POLICY "Leitura Pública" ON match_stats FOR SELECT USING (true);
-CREATE POLICY "Leitura Pública" ON user_squads FOR SELECT USING (true);
+-- Políticas de Escrita/Gestão (Dono da Liga)
+-- Ligas
+DROP POLICY IF EXISTS "Admin Gerencia Liga" ON leagues;
+CREATE POLICY "Admin Gerencia Liga" ON leagues FOR ALL USING (auth.uid() = owner_id);
+DROP POLICY IF EXISTS "Publico Cria Liga" ON leagues;
+CREATE POLICY "Publico Cria Liga" ON leagues FOR INSERT WITH CHECK (true);
 
--- Polícias de Escrita (Cadastro e Criação)
--- Perfil: Permite criar (pós-signup) e atualizar o próprio
-DROP POLICY IF EXISTS "Criação de Perfil" ON profiles;
-CREATE POLICY "Criação de Perfil" ON profiles FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Edit Próprio" ON profiles;
-CREATE POLICY "Edit Próprio" ON profiles FOR UPDATE USING (auth.uid() = id);
+-- Rodadas
+DROP POLICY IF EXISTS "Admin Gerencia Rodadas" ON rounds;
+CREATE POLICY "Admin Gerencia Rodadas" ON rounds FOR ALL 
+USING (EXISTS (SELECT 1 FROM leagues WHERE id = rounds.league_id AND owner_id = auth.uid()));
 
--- Ligas: Permite criar liga
-DROP POLICY IF EXISTS "Dono Gerencia Liga" ON leagues;
-CREATE POLICY "Dono Gerencia Liga" ON leagues FOR ALL USING (auth.uid() = owner_id);
-DROP POLICY IF EXISTS "Criação de Liga" ON leagues;
-CREATE POLICY "Criação de Liga" ON leagues FOR INSERT WITH CHECK (true);
+-- Times
+DROP POLICY IF EXISTS "Admin Gerencia Times" ON teams;
+CREATE POLICY "Admin Gerencia Times" ON teams FOR ALL 
+USING (EXISTS (SELECT 1 FROM leagues WHERE id = teams.league_id AND owner_id = auth.uid()));
 
--- Membros: Permite se inscrever em ligas
-DROP POLICY IF EXISTS "Inscrição em Liga" ON league_members;
-CREATE POLICY "Inscrição em Liga" ON league_members FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Membro Gerencia Próprio" ON league_members;
-CREATE POLICY "Membro Gerencia Próprio" ON league_members FOR ALL USING (auth.uid() = user_id);
+-- Atletas
+DROP POLICY IF EXISTS "Admin Gerencia Atletas" ON athletes;
+CREATE POLICY "Admin Gerencia Atletas" ON athletes FOR ALL 
+USING (EXISTS (SELECT 1 FROM leagues WHERE id = athletes.league_id AND owner_id = auth.uid()));
 
--- Escalação: Permite gerenciar própria escalação
+-- Scouts (Match Stats)
+DROP POLICY IF EXISTS "Admin Gerencia Scouts" ON match_stats;
+CREATE POLICY "Admin Gerencia Scouts" ON match_stats FOR ALL 
+USING (EXISTS (SELECT 1 FROM leagues WHERE id = match_stats.league_id AND owner_id = auth.uid()));
+
+-- Políticas de Usuário (Membros)
+DROP POLICY IF EXISTS "User Gerencia Perfil" ON profiles;
+CREATE POLICY "User Gerencia Perfil" ON profiles FOR ALL USING (auth.uid() = id);
+DROP POLICY IF EXISTS "User Publico Insere" ON profiles;
+CREATE POLICY "User Publico Insere" ON profiles FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "User Gerencia Membro" ON league_members;
+CREATE POLICY "User Gerencia Membro" ON league_members FOR ALL USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Publico Insere Membro" ON league_members;
+CREATE POLICY "Publico Insere Membro" ON league_members FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "User Gerencia Squad" ON user_squads;
 CREATE POLICY "User Gerencia Squad" ON user_squads FOR ALL USING (auth.uid() = user_id);
 
--- 8. VIEW DE RANKING
+-- ==========================================
+-- 3. VIEWS E UTILITÁRIOS
+-- ==========================================
+
 CREATE OR REPLACE VIEW leaderboard_view AS
 SELECT 
     lm.league_id,
@@ -175,4 +202,5 @@ LEFT JOIN user_squads us ON us.user_id = p.id AND us.league_id = lm.league_id
 GROUP BY lm.league_id, p.id, p.name, lm.team_name, p.avatar_url
 ORDER BY total_points DESC;
 
+-- Atualizar Cache
 NOTIFY pgrst, 'reload schema';

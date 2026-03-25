@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, UserPlus, Loader2, Trophy, Shield, Users, Trash2, Search, Info, LayoutDashboard, Calendar } from 'lucide-react';
+import { Plus, UserPlus, Loader2, Trophy, Shield, Users, Trash2, Search, Info, LayoutDashboard, Calendar, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store/useStore';
 import { supabase } from '../../lib/supabase';
@@ -14,7 +14,7 @@ export default function AdminDashboard() {
         fetchLeagueMembers, updateMemberRole, leagueMembers
     } = useStore();
 
-    const activeRound = rounds?.find(r => r.id === activeRoundId);
+    const activeRound = (rounds || []).find(r => r.id === activeRoundId);
 
     const [activeTab, setActiveTab] = useState('overview');
     const [teamName, setTeamName] = useState('');
@@ -49,25 +49,55 @@ export default function AdminDashboard() {
     const [scoutFeed, setScoutFeed] = useState([]);
 
     useEffect(() => {
-        const leagueDetails = myLeagues.find(l => l.id === currentLeagueId);
-        const role = leagueDetails?.role || leagueDetails?.user_role;
-        
-        if (role === 'OWNER' || role === 'ADMIN') {
-            setIsAuthorized(true);
-        } else {
-            setIsAuthorized(false);
-            setPassword('');
-            setPassError(false);
-        }
-        
-        fetchMyLeagues();
-        if (currentLeagueId) {
+        const checkAuthorization = async () => {
+            if (!Array.isArray(myLeagues)) {
+                await fetchMyLeagues();
+                return;
+            }
+
+            if (!currentLeagueId || currentLeagueId === 'null') return;
+
+            const leagueDetails = (myLeagues || []).find(l => l.id === currentLeagueId);
+            const role = leagueDetails?.role || leagueDetails?.user_role;
+            
+            if (role === 'OWNER' || role === 'ADMIN') {
+                setIsAuthorized(true);
+            } else {
+                setIsAuthorized(false);
+                setPassword('');
+                setPassError(false);
+            }
+            
             fetchTeams();
             fetchAthletes();
             fetchRounds();
             fetchLeagueMembers(currentLeagueId);
-        }
-    }, [fetchMyLeagues, fetchTeams, fetchAthletes, fetchRounds, fetchLeagueMembers, currentLeagueId, myLeagues]);
+        };
+
+        checkAuthorization();
+    }, [currentLeagueId, myLeagues]);
+
+    if (!user) return <div className="p-20 text-center font-bebas text-volt">AUTENTICANDO...</div>;
+    
+    if (!currentLeagueId || currentLeagueId === 'null') {
+        return (
+            <div className="min-h-screen bg-black pt-32 px-6 flex flex-col items-center gap-8">
+                <div className="w-20 h-20 rounded-[2.5rem] bg-volt/10 border border-volt/20 flex items-center justify-center animate-pulse">
+                    <Shield className="text-volt" size={32} />
+                </div>
+                <div className="text-center">
+                    <h2 className="text-4xl font-bebas italic text-white tracking-tight">DIRETORIA BLOQUEADA</h2>
+                    <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.3em] mt-3">SELECIONE UMA ARENA NO SEU PERFIL</p>
+                </div>
+                <button 
+                    onClick={() => window.location.href = '/perfil'}
+                    className="mt-6 px-10 py-5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-volt hover:text-black transition-all"
+                >
+                    IR PARA MEU PERFIL
+                </button>
+            </div>
+        );
+    }
 
     const handleCreateLeague = async () => {
         if (!newLeagueName) return setNotification({ message: 'DÊ UM NOME À LIGA!', type: 'error' });
@@ -101,7 +131,7 @@ export default function AdminDashboard() {
                 .maybeSingle();
 
             const ADMIN_CODE = import.meta.env.VITE_ADMIN_CODE || 'CTOLA';
-            const currentLeague = myLeagues.find(l => l.id === currentLeagueId);
+            const currentLeague = (myLeagues || []).find(l => l.id === currentLeagueId);
             const isMasterCode = enteredCode === ADMIN_CODE || enteredCode === currentLeague?.invite_code;
 
             if (memberWithCode || isMasterCode) {
@@ -177,9 +207,25 @@ export default function AdminDashboard() {
         equipe_sofreu_gol: false,
         participou: true
             });
-            const { data } = await supabase.from('match_stats').select('*, athletes(name, pos)')
+            const { data, error } = await supabase.from('match_stats').select('*')
                 .eq('round_id', activeRoundId).eq('league_id', currentLeagueId);
-            setScoutFeed(data || []);
+            
+            if (error) {
+                console.error("Dashboard Scout Fetch Error:", error);
+                return;
+            }
+
+            // JOIN CLIENT-SIDE: Enriquecer com dados dos atletas do store
+            const { athletes } = useStore.getState();
+            const enrichedScouts = (data || []).map(scout => {
+                const athlete = (athletes || []).find(a => a.id === scout.athlete_id);
+                return {
+                    ...scout,
+                    athletes: athlete ? { name: athlete.name, pos: athlete.pos } : null
+                };
+            });
+
+            setScoutFeed(enrichedScouts);
         }
     };
 
@@ -209,7 +255,7 @@ export default function AdminDashboard() {
     );
 
     // Render Logic
-    if (loading && myLeagues.length === 0) {
+    if (loading && (myLeagues || []).length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="animate-spin text-neon mb-4" />
@@ -218,7 +264,7 @@ export default function AdminDashboard() {
         );
     }
 
-    if (!currentLeagueId && myLeagues.length === 0 && !showCreateLeague) {
+    if (!currentLeagueId && (myLeagues || []).length === 0 && !showCreateLeague) {
         return (
             <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                 <div className="w-24 h-24 bg-neon/10 rounded-[2.5rem] flex items-center justify-center border border-neon/20 shadow-2xl shadow-neon/10 animate-pulse mb-10">
@@ -237,22 +283,28 @@ export default function AdminDashboard() {
             </div>
         );
     }
-
-    const currentLeague = myLeagues.find(l => l.id === currentLeagueId);
+    const currentLeague = (myLeagues || []).find(l => l.id === currentLeagueId);
+    
+    // Final Loading Guard
+    if (loading && !currentLeague) return <div className="flex items-center justify-center h-screen bg-pure-black"><Loader2 className="animate-spin text-volt" /></div>;
 
     return (
-        <div className="relative min-h-[80vh]">
-            {/* Header stays visible unless in global loading/empty state */}
-            <header className="px-1 flex flex-col gap-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h2 className="text-xl font-black italic uppercase tracking-tighter text-white">
-                            {currentLeague?.name || 'Arena do Adm'}
-                        </h2>
-                        <span className="text-[8px] font-black uppercase text-neon tracking-[0.2em]">Gestão da Competição</span>
+        <div className="min-h-screen max-h-screen flex flex-col bg-pure-black text-white relative overflow-hidden">
+            {/* Header / Tabs - Fixed */}
+            <div className="shrink-0 p-6 flex flex-col gap-8 bg-black/60 backdrop-blur-3xl border-b border-white/5 z-50">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-[1.25rem] bg-volt flex items-center justify-center text-black">
+                            <Settings size={20} />
+                        </div>
+                        <div className="flex flex-col">
+                            <h1 className="text-xl font-bebas italic uppercase tracking-widest text-white leading-none">Gestão Arena</h1>
+                            <span className="text-[8px] font-black text-volt uppercase mt-1 tracking-widest">{currentLeague?.name || 'SELECIONE UMA LIGA'}</span>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => setShowCreateLeague(true)}
+
+                    <button 
+                        onClick={() => setShowCreateLeague(true)} 
                         className="p-3 glass rounded-2xl text-gray-500 hover:text-neon border-white/5 transition-all"
                     >
                         <Plus size={20} />
@@ -260,28 +312,20 @@ export default function AdminDashboard() {
                 </div>
 
                 {isAuthorized && (
-                    <div className="flex gap-2 p-1.5 bg-deep-charcoal/80 backdrop-blur-md rounded-2xl border border-white/5 overflow-x-auto no-scrollbar shadow-2xl">
-                        {[
-                            { id: 'overview', label: 'Geral', icon: LayoutDashboard },
-                            { id: 'scouts', label: 'Pontuar', icon: Trophy },
-                            { id: 'teams', label: `Clubes`, icon: Shield },
-                            { id: 'athletes', label: `Atletas`, icon: Users },
-                            { id: 'members', label: 'Membros', icon: UserPlus }
-                        ].map(tab => (
+                    <div className="flex p-1 bg-black rounded-[1.5rem] border border-white/5 gap-1 overflow-x-auto no-scrollbar">
+                        {['overview', 'scouts', 'teams', 'athletes', 'members', 'guia'].map(tab => (
                             <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-volt text-black shadow-[0_5px_15px_rgba(223,255,0,0.3)]' : 'text-gray-500 hover:text-white'}`}
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`flex-1 py-4 px-6 rounded-[1.25rem] text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTab === tab ? 'bg-volt text-black shadow-lg shadow-volt/20 translate-y-[-1px]' : 'text-gray-600 hover:text-gray-400'}`}
                             >
-                                <tab.icon size={12} strokeWidth={3} />
-                                {tab.label}
+                                {tab === 'scouts' ? 'Scouter' : tab === 'teams' ? 'Clubs' : tab === 'athletes' ? 'Atletas' : tab === 'members' ? 'Membros' : tab === 'guia' ? 'Guia' : 'Overview'}
                             </button>
                         ))}
                     </div>
                 )}
-            </header>
+            </div>
 
-            {/* Notification Toast */}
             {/* Notification Toast */}
             <AnimatePresence>
                 {notification && (
@@ -299,7 +343,7 @@ export default function AdminDashboard() {
                 )}
             </AnimatePresence>
 
-            {/* Edit Team Modal */}
+            {/* Modals Layer */}
             <AnimatePresence>
                 {editingTeam && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
@@ -332,10 +376,7 @@ export default function AdminDashboard() {
                         </div>
                     </motion.div>
                 )}
-            </AnimatePresence>
 
-            {/* Edit Athlete Modal */}
-            <AnimatePresence>
                 {editingAthlete && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
                         <div className="w-full max-w-sm glass p-10 rounded-[3rem] border border-white/10 flex flex-col gap-8 shadow-2xl">
@@ -399,7 +440,9 @@ export default function AdminDashboard() {
                 )}
             </AnimatePresence>
 
-            <AnimatePresence mode="wait">
+            {/* Scrollable Main Region */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-40 no-scrollbar">
+                <AnimatePresence mode="wait">
                 {showCreateLeague ? (
                     <motion.div
                         key="create"
@@ -545,7 +588,7 @@ export default function AdminDashboard() {
                             <div className="bento-card flex flex-col gap-4 border-white/5 group">
                                 <Users className="text-gray-700 group-hover:text-volt transition-colors" size={20} />
                                 <div className="flex flex-col">
-                                    <span className="text-3xl font-bebas text-white leading-none">{athletes.length}</span>
+                                    <span className="text-3xl font-bebas text-white leading-none">{(athletes || []).length}</span>
                                     <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest mt-1">ATLETAS ATIVOS</span>
                                 </div>
                             </div>
@@ -553,7 +596,7 @@ export default function AdminDashboard() {
                             <div className="bento-card flex flex-col gap-4 border-white/5 group">
                                 <Shield className="text-gray-700 group-hover:text-volt transition-colors" size={20} />
                                 <div className="flex flex-col">
-                                    <span className="text-3xl font-bebas text-white leading-none">{teams.length}</span>
+                                    <span className="text-3xl font-bebas text-white leading-none">{(teams || []).length}</span>
                                     <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest mt-1">CLUBES DA LIGA</span>
                                 </div>
                             </div>
@@ -610,7 +653,7 @@ export default function AdminDashboard() {
                                         className="w-full bg-black/50 border border-white/5 rounded-2xl px-6 py-5 text-sm font-bold text-white outline-none focus:border-volt/30 transition-all appearance-none"
                                     >
                                         <option value="">SELECIONE O CRAQUE</option>
-                                        {athletes.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name.toUpperCase()} ({a.teams?.name?.toUpperCase()})</option>)}
+                                        {(athletes || []).map(a => <option key={a.id} value={a.id} className="bg-black">{a.name.toUpperCase()} ({a.teams?.name?.toUpperCase()})</option>)}
                                     </select>
                                 </div>
 
@@ -680,9 +723,9 @@ export default function AdminDashboard() {
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center justify-between px-2">
                                 <h4 className="text-[10px] font-black text-gray-700 uppercase tracking-widest">Feed de Lançamentos</h4>
-                                <span className="text-[8px] font-bold text-gray-800 uppercase">{scoutFeed.length} EVENTOS</span>
+                                <span className="text-[8px] font-bold text-gray-800 uppercase">{(scoutFeed || []).length} EVENTOS</span>
                             </div>
-                            {scoutFeed.map(s => (
+                            {(scoutFeed || []).map(s => (
                                 <motion.div 
                                     key={s.id} 
                                     initial={{ opacity: 0, x: -10 }} 
@@ -732,7 +775,7 @@ export default function AdminDashboard() {
                         </div>
                         
                         <div className="grid grid-cols-1 gap-4">
-                            {teams.map(t => (
+                            {(teams || []).map(t => (
                                 <motion.div 
                                     key={t.id} 
                                     whileHover={{ x: 5 }}
@@ -846,6 +889,43 @@ export default function AdminDashboard() {
                             ))}
                         </div>
                     </motion.div>
+                ) : activeTab === 'guia' ? (
+                    <motion.div key="guide" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="px-1 py-8 flex flex-col gap-10">
+                        <div className="flex flex-col gap-3">
+                            <h3 className="text-3xl font-bebas italic uppercase text-white tracking-widest pl-2">Guia do Organizador</h3>
+                            <div className="h-1 w-12 bg-volt rounded-full ml-2" />
+                            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mt-2 pl-2">Passo a passo para gerir sua liga</p>
+                        </div>
+
+                        <div className="flex flex-col gap-8">
+                            {[
+                                { step: '01', title: 'Configurar Clubes', desc: 'Cadastre os times que participarão da rodada real na aba "Clubs".' },
+                                { step: '02', title: 'Convocar Atletas', desc: 'Adicione os jogadores de cada time na aba "Atletas". Eles ficarão disponíveis para compra no mercado.' },
+                                { step: '03', title: 'Abrir Mercado', desc: 'Na "Overview", garanta que a rodada está como "Aberta". Os usuários poderão escalar seus times.' },
+                                { step: '04', title: 'Fechar Mercado', desc: 'Antes dos jogos começarem, mude o status para "Fechada". Isso bloqueia novas escalações.' },
+                                { step: '05', title: 'Lançar Scouts', desc: 'Na aba "Scouter", selecione o atleta e lance os gols, assistências e scouts. Os pontos são calculados em tempo real.' },
+                                { step: '06', title: 'Virar Rodada', desc: 'Após todos os jogos, clique em "Finalizar Rodada". O sistema valoriza os atletas e prepara a próxima.' },
+                            ].map((item, i) => (
+                                <div key={i} className="flex gap-6 items-start group">
+                                    <span className="text-2xl font-bebas italic text-white/20 group-hover:text-volt transition-colors pt-1">{item.step}</span>
+                                    <div className="flex flex-col gap-2">
+                                        <h4 className="text-xs font-black text-white uppercase tracking-wider">{item.title}</h4>
+                                        <p className="text-xs text-gray-500 leading-relaxed font-medium">{item.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="bg-volt/5 border border-volt/10 p-8 rounded-[2.5rem] mt-4 flex flex-col gap-4">
+                            <div className="flex items-center gap-3">
+                                <ShieldCheck className="text-volt" size={20} />
+                                <span className="text-[10px] font-black text-volt uppercase tracking-widest">Dica de Segurança</span>
+                            </div>
+                            <p className="text-xs text-gray-400 leading-relaxed">
+                                Compartilhe o <strong>Código de Convite</strong> para os jogadores entrarem. Use a <strong>Senha de Gestão</strong> apenas com pessoas de confiança que te ajudarão a lançar os pontos.
+                            </p>
+                        </div>
+                    </motion.div>
                 ) : (
                     <motion.div key="members" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="px-1 py-8 flex flex-col gap-6">
                         <div className="flex flex-col gap-2 mb-2">
@@ -856,28 +936,31 @@ export default function AdminDashboard() {
                             {leagueMembers.map(member => (
                                 <motion.div 
                                     key={member.id} 
-                                    className="bg-deep-charcoal/40 p-6 rounded-[2.5rem] border border-white/5 flex items-center justify-between group hover:bg-black/60 transition-all shadow-xl"
+                                    className="bg-deep-charcoal/40 p-6 rounded-[3rem] border border-white/5 flex items-center justify-between group hover:bg-black/60 transition-all shadow-xl"
                                 >
                                     <div className="flex items-center gap-5">
-                                        <div className="w-14 h-14 rounded-2xl bg-black border border-white/5 flex items-center justify-center relative shadow-inner">
-                                            <span className="text-lg font-bebas italic text-volt">{member.profiles?.name?.substring(0, 1).toUpperCase()}</span>
-                                            {member.role === 'ADMIN' && (
-                                                <div className="absolute -top-2 -right-2 w-6 h-6 bg-volt rounded-lg flex items-center justify-center text-black border-2 border-black rotate-12">
-                                                    <Trophy size={10} strokeWidth={3} />
+                                        <div className="w-16 h-16 rounded-[1.5rem] bg-black border border-white/5 flex items-center justify-center relative shadow-inner">
+                                            <span className="text-xl font-bebas italic text-volt">{member.profiles?.name?.substring(0, 1).toUpperCase()}</span>
+                                            {member.role === 'ADMIN' || member.role === 'OWNER' ? (
+                                                <div className="absolute -top-2 -right-2 w-7 h-7 bg-volt rounded-xl flex items-center justify-center text-black border-2 border-black rotate-12 shadow-lg shadow-volt/20">
+                                                    <Trophy size={12} strokeWidth={3} />
                                                 </div>
-                                            )}
+                                            ) : null}
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-sm font-black text-white italic tracking-tighter uppercase leading-none">{member.profiles?.name}</span>
-                                            <span className="text-[9px] font-black text-gray-700 uppercase tracking-[0.3em] mt-2 italic">{member.role}</span>
+                                            <span className="text-base font-black text-white italic tracking-tighter uppercase leading-none">{member.profiles?.name}</span>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <div className={`w-1 h-1 rounded-full ${member.role === 'OWNER' ? 'bg-volt' : 'bg-gray-700'}`} />
+                                                <span className="text-[9px] font-black text-gray-700 uppercase tracking-[0.3em] italic">{member.role === 'OWNER' ? 'FUNDADOR' : member.role}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     {currentLeague?.owner_id === user.id && member.user_id !== user.id && (
                                         <button 
                                             onClick={() => updateMemberRole(currentLeagueId, member.user_id, member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN')} 
-                                            className="px-6 py-3.5 bg-white/5 text-[9px] font-black uppercase text-gray-500 rounded-2xl hover:bg-volt/10 hover:text-volt transition-all border border-transparent hover:border-volt/20"
+                                            className="px-6 py-4 bg-white/5 text-[9px] font-black uppercase text-gray-500 rounded-[1.25rem] hover:bg-volt hover:text-black transition-all border border-white/5 active:scale-95"
                                         >
-                                            {member.role === 'ADMIN' ? 'REVOGAR ADMIN' : 'PROMOVER'}
+                                            {member.role === 'ADMIN' ? 'REMOVER ADMIN' : 'PROMOVER'}
                                         </button>
                                     )}
                                 </motion.div>
@@ -886,6 +969,7 @@ export default function AdminDashboard() {
                     </motion.div>
                 )}
             </AnimatePresence>
+            </div>
         </div>
     );
 }

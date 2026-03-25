@@ -21,7 +21,7 @@ export default function Scouter() {
         }
     }, [fetchTeams, fetchAthletes, currentLeagueId]);
 
-    const activeRound = rounds.find(r => r.id === activeRoundId);
+    const activeRound = (rounds || []).find(r => r.id === activeRoundId);
 
     const handleSelectTeam = (team) => {
         setSelectedTeam(team);

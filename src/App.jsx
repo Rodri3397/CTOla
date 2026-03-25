@@ -46,9 +46,19 @@ function App() {
 
     const isAdmin = profile?.role === 'ADMIN';
     const profileLoading = user && !profile;
+    const { notification } = useStore();
 
     return (
         <div className="min-h-screen bg-pure-black max-w-md mx-auto relative overflow-x-hidden text-white flex flex-col font-inter">
+            {/* Global Notification Toast */}
+            {notification && (
+                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] w-[90%] max-w-xs transition-all animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="bg-volt/90 text-black px-4 py-3 rounded-xl shadow-2xl border border-white/20 backdrop-blur-md flex items-center justify-between">
+                        <span className="text-sm font-bold uppercase tracking-widerCondensed">{notification}</span>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 pb-32 pt-6 px-5">
                 <Routes>
                     <Route path="/" element={<Home />} />
@@ -61,7 +71,7 @@ function App() {
                     <Route path="/ranking" element={user ? <Ranking /> : <Navigate to="/auth" />} />
                     <Route path="/rodada" element={user ? <MatchCenter /> : <Navigate to="/auth" />} />
                     <Route path="/perfil" element={user ? <Profile /> : <Navigate to="/auth" />} />
-                    <Route path="/league/:id" element={user ? <LeagueDetail /> : <Navigate to="/auth" />} /> {/* Added LeagueDetail route */}
+                    <Route path="/league/:id" element={user ? <LeagueDetail /> : <Navigate to="/auth" />} />
 
                     {/* Admin/League Owner Routes */}
                     <Route

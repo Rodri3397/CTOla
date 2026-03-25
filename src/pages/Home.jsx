@@ -102,7 +102,7 @@ export default function Home() {
         Object.entries(squad).forEach(([slot, player]) => {
             if (player) {
                 // Round score (from feed which is filtered by activeRoundId)
-                const roundPlayerStats = feed.find(f => f.athlete_id === player.id) || {};
+                const roundPlayerStats = (feed || []).find(f => f.athlete_id === player.id) || {};
                 roundTotal += calculateScore(roundPlayerStats, player.pos, capId === slot);
 
                 // Cumulative score (optionally filtered by month)
@@ -116,8 +116,7 @@ export default function Home() {
                 });
 
                 playerAllStats.forEach(stat => {
-                    // Fallback position detection from slot
-                    const pos = slot === 'goleiro' ? 'GOLEIRO' : slot === 'fixo' ? 'FIXO' : 'LINE';
+                    const pos = player?.pos || (slot === 'goleiro' ? 'GOLEIRO' : slot === 'fixo' ? 'FIXO' : 'ALA');
                     cumulativeTotal += calculateScore(stat, pos, capId === slot);
                 });
             }
@@ -131,7 +130,7 @@ export default function Home() {
     const budgetData = useMemo(() => {
         const squad = dbSquad?.squad_data || {};
         const cost = Object.values(squad).reduce((acc, id) => {
-            const athlete = athletes.find(a => String(a.id) === String(id));
+            const athlete = (athletes || []).find(a => String(a.id) === String(id));
             return acc + (athlete?.price || 0);
         }, 0);
         const patrimony = parseFloat(profile?.wallet) || 100.0;
@@ -144,8 +143,8 @@ export default function Home() {
         const roundStats = allStats.filter(s => s.round_id === activeRoundId);
         return roundStats
             .map(s => {
-                const athlete = feed.find(f => f.athlete_id === s.athlete_id)?.athletes || 
-                                (teams.flatMap(t => t.athletes || []).find(a => a.id === s.athlete_id));
+                const athlete = (feed || []).find(f => f.athlete_id === s.athlete_id)?.athletes || 
+                                ((teams || []).flatMap(t => t.athletes || []).find(a => a.id === s.athlete_id));
                 return {
                     ...s,
                     athlete_name: athlete?.name || 'Atleta',
@@ -187,7 +186,7 @@ export default function Home() {
                             </h1>
                             {currentLeagueId && (
                                 <span className="text-lg font-bebas italic text-volt/60 tracking-tight brightness-110">
-                                    / {myFollowedLeaguesDetails.find(l => l.id === currentLeagueId)?.name || 'Arena'}
+                                    / {(myFollowedLeaguesDetails || []).find(l => l.id === currentLeagueId)?.name || 'Arena'}
                                 </span>
                             )}
                         </div>

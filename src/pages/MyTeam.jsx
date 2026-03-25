@@ -21,7 +21,7 @@ const MyTeam = () => {
     const [tempTeamName, setTempTeamName] = useState('');
     const [isNamingTeam, setIsNamingTeam] = useState(false);
 
-    const activeRound = rounds.find(r => r.id === activeRoundId);
+    const activeRound = (rounds || []).find(r => r.id === activeRoundId);
     const isMarketOpen = activeRound?.status === 'open';
 
     const squadObjects = {};
@@ -30,10 +30,10 @@ const MyTeam = () => {
             squadObjects[slot] = null;
             return;
         }
-        squadObjects[slot] = athletes.find(a => String(a.id) === String(id)) || null;
+        squadObjects[slot] = (athletes || []).find(a => String(a.id) === String(id)) || null;
     });
 
-    const currentLeagueMember = myFollowedLeaguesDetails.find(l => l.id === currentLeagueId);
+    const currentLeagueMember = (myFollowedLeaguesDetails || []).find(l => l.id === currentLeagueId);
     const teamName = currentLeagueMember?.team_name;
     const hasTeamName = !!teamName;
     const isLeagueAdmin = currentLeagueMember?.role === 'OWNER' || currentLeagueMember?.role === 'ADMIN' || currentLeagueMember?.user_role === 'OWNER';
@@ -146,7 +146,7 @@ const MyTeam = () => {
                             </p>
                             <button
                                 onClick={() => {
-                                    const currentRound = rounds.find(r => r.status === 'open' || r.status === 'active');
+                                    const currentRound = (rounds || []).find(r => r.status === 'open' || r.status === 'active');
                                     if (currentRound) setActiveRound(currentRound.id);
                                 }}
                                 className="mt-4 px-8 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white hover:bg-white/10 transition-all uppercase tracking-widest"

@@ -36,7 +36,7 @@ const LeagueDetail = () => {
     const [athleteLeaderboard, setAthleteLeaderboard] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMember, setSelectedMember] = useState(null);
-    const league = myFollowedLeaguesDetails.find(l => l.id === id);
+    const league = (myFollowedLeaguesDetails || []).find(l => l.id === id);
     const isLeagueAdmin = league?.role === 'OWNER' || league?.role === 'ADMIN';
     const isMember = myFollowedLeaguesDetails.some(l => l.id === id);
     const isLeagueOwner = league?.owner_id === user?.id;
@@ -99,7 +99,7 @@ const LeagueDetail = () => {
             const { data: athletesInfo } = await supabase.from('athletes').select('id, name, pos, team_id').eq('league_id', id);
             const athleteMap = {};
             filteredStats.forEach(st => {
-                const athlete = athletesInfo?.find(a => a.id === st.athlete_id);
+                const athlete = (athletesInfo || []).find(a => a.id === st.athlete_id);
                 if (athlete) {
                     if (!athleteMap[st.athlete_id]) {
                         athleteMap[st.athlete_id] = { id: st.athlete_id, name: athlete.name, pos: athlete.pos, points: 0 };

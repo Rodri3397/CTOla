@@ -99,11 +99,11 @@ export const useStore = create((set, get) => ({
                 loading: false 
             });
 
-            // FIXED: Validate currentLeagueId against fetched results to prevent "Ghost Leagues"
+            // Validate currentLeagueId against fetched results
             const { currentLeagueId } = get();
-            if (currentLeagueId) {
+            if (currentLeagueId && memberData) { // Only validate if we got a valid response
                 const stillExists = fetchedLeagues.some(l => l.id === currentLeagueId);
-                if (!stillExists) {
+                if (!stillExists && fetchedLeagues.length > 0) { // Only clear if they HAVE other leagues
                     console.warn("Current league no longer exists/joined. Clearing stale session.");
                     set({ currentLeagueId: null });
                     localStorage.removeItem('ctola_league_id');
@@ -248,22 +248,20 @@ export const useStore = create((set, get) => ({
     // Unified fetch for all league data to avoid multiple loading flickers
     fetchLeagueData: async () => {
         const { currentLeagueId } = get();
-        if (!currentLeagueId || currentLeagueId === 'null' || currentLeagueId === 'undefined') {
-            set({ loading: false });
-            return;
-        }
+        if (!currentLeagueId) return;
 
         set({ loading: true, error: null });
         try {
-            await Promise.all([
-                get().fetchTeams(),
-                get().fetchAthletes(),
-                get().fetchRounds(),
-                get().fetchFeed()
-            ]);
+            // SEQUENTIAL FETCHING to avoid race conditions in client-side joins
+            await get().fetchTeams();
+            await get().fetchAthletes();
+            await get().fetchRounds();
+            await get().fetchFeed();
+            
+            set({ loading: false });
         } catch (err) {
-            set({ error: err.message });
-        } finally {
+            console.error('Fetch league data error:', err);
+            get().setNotification(`ERRO AO CARREGAR DADOS: ${err.message}`);
             set({ loading: false });
         }
     },
@@ -632,8 +630,8 @@ export const useStore = create((set, get) => ({
 
             // Merge everything
             const enrichedSquads = squads.map(s => {
-                const member = members?.find(m => m.user_id === s.user_id);
-                const profile = profiles?.find(p => p.id === s.user_id);
+                const member = (members || []).find(m => m.user_id === s.user_id);
+                const profile = (profiles || []).find(p => p.id === s.user_id);
                 return {
                     ...s,
                     team_name: member?.team_name || profile?.name || 'Time sem Nome',
@@ -694,11 +692,11 @@ export const useStore = create((set, get) => ({
             const currentRounds = get().rounds;
             if (currentRounds.length > 0) {
                 const storedRoundId = localStorage.getItem('ctola_active_round_id');
-                const currentRound = currentRounds.find(r => r.id === storedRoundId);
+                const currentRound = (currentRounds || []).find(r => r.id === storedRoundId);
                 
                 // ONLY auto-select if no round is stored OR stored round doesn't belong to this league
                 if (!currentRound) {
-                    const newestActive = [...currentRounds].reverse().find(r => r.status !== 'finished');
+                    const newestActive = [...(currentRounds || [])].reverse().find(r => r.status !== 'finished');
                     const targetRoundId = newestActive ? newestActive.id : currentRounds[currentRounds.length - 1].id;
                     set({ activeRoundId: targetRoundId });
                     localStorage.setItem('ctola_active_round_id', targetRoundId);
@@ -789,7 +787,7 @@ export const useStore = create((set, get) => ({
 
                     if (statsData) {
                         enrichedAthletes = enrichedAthletes.map(athlete => {
-                            const latestStat = statsData.find(s => s.athlete_id === athlete.id);
+                            const latestStat = (statsData || []).find(s => s.athlete_id === athlete.id);
                             return { ...athlete, last_score: latestStat ? latestStat.points : 0 };
                         });
                     }
@@ -923,19 +921,14 @@ export const useStore = create((set, get) => ({
 
     // Fetch feed for current league and round
     fetchFeed: async () => {
-        const { currentLeagueId, activeRoundId } = get();
+        const { currentLeagueId, activeRoundId, athletes } = get();
         if (!currentLeagueId) return;
 
         try {
+            // FIXED: Using separate fetch to avoid ambiguous relationship joins (Error 400)
             let query = supabase
                 .from('match_stats')
-                .select(`
-                    *,
-                    athletes (
-                        name,
-                        pos
-                    )
-                `, { count: 'exact' })
+                .select('*')
                 .eq('league_id', currentLeagueId)
                 .order('created_at', { ascending: false });
 
@@ -945,7 +938,21 @@ export const useStore = create((set, get) => ({
 
             const { data, error } = await query.limit(10);
 
-            if (!error) set({ feed: data || [] });
+            if (error) {
+                console.error("Feed fetch error:", error);
+                return;
+            }
+
+            // JOIN CLIENT-SIDE: Enriquecer com dados dos atletas já carregados no store
+            const enrichedData = (data || []).map(stat => {
+                const athlete = (athletes || []).find(a => a.id === stat.athlete_id);
+                return {
+                    ...stat,
+                    athletes: athlete ? { name: athlete.name, pos: athlete.pos } : null
+                };
+            });
+
+            set({ feed: enrichedData });
         } catch (err) {
             console.error("Feed error:", err);
         }
@@ -959,7 +966,7 @@ export const useStore = create((set, get) => ({
         set({ loading: true });
         
         // Find the athlete's position to calculate points correctly
-        const athlete = athletes.find(a => a.id === stats.athlete_id);
+        const athlete = (athletes || []).find(a => a.id === stats.athlete_id);
         const position = athlete ? athlete.pos : 'ALA';
         
         const finalPoints = calculateScore(stats, position, false); // False for not a captain in this context (it's base data)

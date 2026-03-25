@@ -84,10 +84,11 @@ const Profile = () => {
     }, [fetchMyLeagues]);
 
     const isGlobalAdmin = profile?.role === 'ADMIN';
-    const hasLeagueManagement = myFollowedLeaguesDetails.some(l => l.role === 'OWNER' || l.role === 'ADMIN');
+    const hasLeagueManagement = (myFollowedLeaguesDetails || []).some(l => l.role === 'OWNER' || l.role === 'ADMIN');
     const canManage = isGlobalAdmin || hasLeagueManagement;
 
-    const initials = profile?.name ? profile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
+    const name = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
+    const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
 
     const handleSignOut = async () => {
         await signOut();
@@ -100,7 +101,7 @@ const Profile = () => {
     };
 
     const handleOpenAdmin = (leagueId) => {
-        const league = myFollowedLeaguesDetails.find(l => l.id === leagueId);
+        const league = (myFollowedLeaguesDetails || []).find(l => l.id === leagueId);
         if (league?.role === 'OWNER') {
             useStore.getState().setCurrentLeague(leagueId);
             navigate('/admin/dashboard');
@@ -118,7 +119,7 @@ const Profile = () => {
                 .eq('user_id', user.id)
                 .maybeSingle();
 
-            const league = myFollowedLeaguesDetails.find(l => l.id === adminAuth.leagueId);
+            const league = (myFollowedLeaguesDetails || []).find(l => l.id === adminAuth.leagueId);
             const MASTER_CODE = 'CTOLA'; // Global override
             
             const isAuthorized = (memberData?.admin_code && memberData.admin_code === adminAuth.code) || 
@@ -206,7 +207,7 @@ const Profile = () => {
                 </div>
 
                 <div className="flex flex-col gap-4">
-                    {myFollowedLeaguesDetails.map((league) => (
+                    {(myFollowedLeaguesDetails || []).map((league) => (
                         <div key={league.id} className="bento-card p-6 flex flex-col gap-6 bg-[#0a0a0a] border-white/5 hover:border-white/10 transition-all">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
@@ -257,7 +258,7 @@ const Profile = () => {
                         </div>
                     ))}
 
-                    {myFollowedLeaguesDetails.length === 0 && (
+                    {(myFollowedLeaguesDetails || []).length === 0 && (
                         <div className="py-16 flex flex-col items-center justify-center text-center gap-4 opacity-20">
                             <Search size={48} />
                             <p className="text-[10px] font-black uppercase tracking-[0.2em]">Nenhuma liga encontrada.<br/>Comece agora mesmo!</p>
