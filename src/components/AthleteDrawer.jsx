@@ -12,7 +12,7 @@ export default function AthleteDrawer({ isOpen, onClose, position, onSelect, cur
         return athletes
             .filter(a => a.league_id === currentLeagueId)
             .filter(a => {
-                if (position === 'LINHA') return ['FIXO', 'ALA', 'PIVO'].includes(a.pos);
+                if (position === 'LINHA' || position === 'Capitão') return ['FIXO', 'ALA', 'PIVO'].includes(a.pos);
                 return a.pos === position;
             })
             .filter(a => a.name.toLowerCase().includes(search.toLowerCase()))

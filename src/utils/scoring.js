@@ -1,5 +1,5 @@
 /**
- * Sistema de Pontuação Oficial do CTOla (Refatorado - Senior Level)
+ * Sistema de Pontuação Oficial do Donos da Quadra (Refatorado - Senior Level)
  */
 
 export const POSITION_TYPES = {

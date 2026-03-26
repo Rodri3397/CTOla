@@ -130,7 +130,7 @@ export default function AdminDashboard() {
                 .eq('admin_code', enteredCode)
                 .maybeSingle();
 
-            const ADMIN_CODE = import.meta.env.VITE_ADMIN_CODE || 'CTOLA';
+            const ADMIN_CODE = import.meta.env.VITE_ADMIN_CODE || 'DQ';
             const currentLeague = (myLeagues || []).find(l => l.id === currentLeagueId);
             const isMasterCode = enteredCode === ADMIN_CODE || enteredCode === currentLeague?.invite_code;
 

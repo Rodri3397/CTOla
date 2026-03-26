@@ -48,7 +48,7 @@ export default function Home() {
                         <Trophy className="text-neon" size={48} />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-black italic uppercase tracking-tighter">Bem-vindo ao CTOlá</h1>
+                        <h1 className="text-4xl font-black italic uppercase tracking-tighter">Bem-vindo ao Donos da Quadra</h1>
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-4 px-10 leading-loose">
                             Sua jornada no fantasy futsal começa agora. Escolha uma liga para começar a competir ou crie a sua própria!
                         </p>
@@ -182,7 +182,7 @@ export default function Home() {
                         )}
                         <div className="flex items-baseline gap-3">
                             <h1 className="text-5xl font-bebas italic text-white leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                                CT<span className="text-volt">OLA</span>
+                                DONOS DA <span className="text-volt">QUADRA</span>
                             </h1>
                             {currentLeagueId && (
                                 <span className="text-lg font-bebas italic text-volt/60 tracking-tight brightness-110">

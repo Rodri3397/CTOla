@@ -121,9 +121,9 @@ export default function Pitch({ squad, onSetCaptain, onSelectSlot, onRemoveSlot,
                     <div className="flex justify-center">
                         <PitchSlot 
                             athlete={squad.pivo2} 
-                            label="Linha" 
+                            label="Capitão" 
                             isCaptain={String(squad.pivo2?.id) === String(captainId)}
-                            onSelect={() => onSelectSlot('pivo2', 'PIVO')}
+                            onSelect={() => onSelectSlot('pivo2', 'Capitão')}
                             onRemove={() => onRemoveSlot('pivo2')}
                         />
                     </div>

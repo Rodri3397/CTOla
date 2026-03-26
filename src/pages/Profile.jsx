@@ -120,7 +120,7 @@ const Profile = () => {
                 .maybeSingle();
 
             const league = (myFollowedLeaguesDetails || []).find(l => l.id === adminAuth.leagueId);
-            const MASTER_CODE = 'CTOLA'; // Global override
+            const MASTER_CODE = 'DQ'; // Global override
             
             const isAuthorized = (memberData?.admin_code && memberData.admin_code === adminAuth.code) || 
                                adminAuth.code === MASTER_CODE || 

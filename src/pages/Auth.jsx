@@ -49,7 +49,7 @@ export default function Auth() {
 
                 <div className="flex flex-col items-center gap-3 relative z-10">
                     <h1 className="text-6xl font-bebas italic text-white leading-none tracking-tighter drop-shadow-2xl">
-                        CT<span className="text-volt">OLA</span>
+                        DONOS DA <span className="text-volt">QUADRA</span>
                     </h1>
                     <div className="flex items-center gap-2">
                         <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-white/20" />

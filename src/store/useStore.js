@@ -6,9 +6,9 @@ export const useStore = create((set, get) => ({
     teams: [],
     athletes: [],
     rounds: [],
-    activeRoundId: localStorage.getItem('ctola_active_round_id') || null,
+    activeRoundId: localStorage.getItem('dq_active_round_id') || null,
     currentLeagueId: (() => {
-        const id = localStorage.getItem('ctola_league_id');
+        const id = localStorage.getItem('dq_league_id');
         return (id && id !== 'null' && id !== 'undefined') ? id : null;
     })(),
     leagues: [],
@@ -16,8 +16,8 @@ export const useStore = create((set, get) => ({
     isValidUUID: (id) => id && id.length > 30 && id !== 'null' && id !== 'undefined',
     myFollowedLeagues: [],
     myFollowedLeaguesDetails: [],
-    draftSquad: JSON.parse(localStorage.getItem('ctola_draft_squad') || '{"goleiro":null,"fixo":null,"ala1":null,"ala2":null,"pivo1":null,"pivo2":null}'),
-    draftCaptainId: localStorage.getItem('ctola_draft_captain') || null,
+    draftSquad: JSON.parse(localStorage.getItem('dq_draft_squad') || '{"goleiro":null,"fixo":null,"ala1":null,"ala2":null,"pivo1":null,"pivo2":null}'),
+    draftCaptainId: localStorage.getItem('dq_draft_captain') || null,
     wallet: 100.0, // Default wallet value if profile not loaded
     leagueMembers: [], // Members of the currently active league for management
     feed: [],
@@ -34,9 +34,9 @@ export const useStore = create((set, get) => ({
     setCurrentLeague: (id) => {
         set({ currentLeagueId: id });
         if (id) {
-            localStorage.setItem('ctola_league_id', id);
+            localStorage.setItem('dq_league_id', id);
         } else {
-            localStorage.removeItem('ctola_league_id');
+            localStorage.removeItem('dq_league_id');
         }
         // Refresh data when league changes
         get().fetchTeams();
@@ -106,7 +106,7 @@ export const useStore = create((set, get) => ({
                 if (!stillExists && fetchedLeagues.length > 0) { // Only clear if they HAVE other leagues
                     console.warn("Current league no longer exists/joined. Clearing stale session.");
                     set({ currentLeagueId: null });
-                    localStorage.removeItem('ctola_league_id');
+                    localStorage.removeItem('dq_league_id');
                 }
             }
 
@@ -114,7 +114,7 @@ export const useStore = create((set, get) => ({
             if (!get().currentLeagueId && fetchedLeagues.length > 0) {
                 const firstId = fetchedLeagues[0].id;
                 set({ currentLeagueId: firstId });
-                localStorage.setItem('ctola_league_id', firstId);
+                localStorage.setItem('dq_league_id', firstId);
                 get().fetchTeams();
                 get().fetchAthletes();
                 get().fetchRounds();
@@ -162,7 +162,7 @@ export const useStore = create((set, get) => ({
                     currentLeagueId: data[0].id,
                     loading: false 
                 });
-                localStorage.setItem('ctola_league_id', data[0].id);
+                localStorage.setItem('dq_league_id', data[0].id);
                 
                 // FIXED: Automatically start Round 1 as 'open'
                 await get().startNextRound(data[0].id);
@@ -581,24 +581,24 @@ export const useStore = create((set, get) => ({
         if (slot) {
             const newDraft = { ...draftSquad, [slot]: athlete.id };
             set({ draftSquad: newDraft });
-            localStorage.setItem('ctola_draft_squad', JSON.stringify(newDraft));
+            localStorage.setItem('dq_draft_squad', JSON.stringify(newDraft));
         }
     },
 
     setDraftSquad: (squad) => {
         set({ draftSquad: squad });
-        localStorage.setItem('ctola_draft_squad', JSON.stringify(squad));
+        localStorage.setItem('dq_draft_squad', JSON.stringify(squad));
     },
 
     setDraftCaptain: (id) => {
         set({ draftCaptainId: id });
-        localStorage.setItem('ctola_draft_captain', id || '');
+        localStorage.setItem('dq_draft_captain', id || '');
     },
 
     clearDraftSquad: () => {
         set({ draftSquad: {}, draftCaptainId: null });
-        localStorage.removeItem('ctola_draft_squad');
-        localStorage.removeItem('ctola_draft_captain');
+        localStorage.removeItem('dq_draft_squad');
+        localStorage.removeItem('dq_draft_captain');
     },
 
     fetchLeaderboard: async () => {
@@ -684,14 +684,14 @@ export const useStore = create((set, get) => ({
                 set({ rounds: data });
             } else {
                 // Fallback to local storage if table missing
-                const local = localStorage.getItem(`ctola_rounds_${currentLeagueId}`);
+                const local = localStorage.getItem(`dq_rounds_${currentLeagueId}`);
                 if (local) set({ rounds: JSON.parse(local) });
             }
 
             // Default logic for active round selection
             const currentRounds = get().rounds;
             if (currentRounds.length > 0) {
-                const storedRoundId = localStorage.getItem('ctola_active_round_id');
+                const storedRoundId = localStorage.getItem('dq_active_round_id');
                 const currentRound = (currentRounds || []).find(r => r.id === storedRoundId);
                 
                 // ONLY auto-select if no round is stored OR stored round doesn't belong to this league
@@ -699,7 +699,7 @@ export const useStore = create((set, get) => ({
                     const newestActive = [...(currentRounds || [])].reverse().find(r => r.status !== 'finished');
                     const targetRoundId = newestActive ? newestActive.id : currentRounds[currentRounds.length - 1].id;
                     set({ activeRoundId: targetRoundId });
-                    localStorage.setItem('ctola_active_round_id', targetRoundId);
+                    localStorage.setItem('dq_active_round_id', targetRoundId);
                 }
             }
         } catch (err) {
@@ -728,7 +728,7 @@ export const useStore = create((set, get) => ({
         if (error) {
             console.warn("Supabase rounds error, using local fallback", error);
             const updated = [...rounds, newRound];
-            localStorage.setItem(`ctola_rounds_${currentLeagueId}`, JSON.stringify(updated));
+            localStorage.setItem(`dq_rounds_${currentLeagueId}`, JSON.stringify(updated));
             set({ rounds: updated, activeRoundId: newRound.id });
             return { data: [newRound], error: null };
         }
@@ -738,7 +738,7 @@ export const useStore = create((set, get) => ({
                 rounds: [...state.rounds, data[0]],
                 activeRoundId: data[0].id
             }));
-            localStorage.setItem('ctola_active_round_id', data[0].id);
+            localStorage.setItem('dq_active_round_id', data[0].id);
         }
         return { data, error };
     },
@@ -746,9 +746,9 @@ export const useStore = create((set, get) => ({
     setActiveRound: (id) => {
         set({ activeRoundId: id });
         if (id) {
-            localStorage.setItem('ctola_active_round_id', id);
+            localStorage.setItem('dq_active_round_id', id);
         } else {
-            localStorage.removeItem('ctola_active_round_id');
+            localStorage.removeItem('dq_active_round_id');
         }
         get().clearDraftSquad();
     },
