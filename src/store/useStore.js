@@ -1086,7 +1086,7 @@ export const useStore = create((set, get) => ({
             const { data, error } = await supabase.from('rounds').insert([{ league_id: leagueId, number: nextNum, status: 'open' }]).select().single();
             if (!error && data) {
                 set({ rounds: [...rounds, data], activeRoundId: data.id });
-                localStorage.setItem('ctola_active_round_id', data.id);
+                localStorage.setItem('dq_active_round_id', data.id);
             }
             return { data, error };
         } finally {

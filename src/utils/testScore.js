@@ -22,7 +22,7 @@ const tests = [
     }
 ];
 
-console.log("=== CTOla Scoring Logic Test ===");
+console.log("=== Donos da Quadra Scoring Logic Test ===");
 tests.forEach(t => {
     const result = calculateScore(t.stats, t.position, t.isCaptain);
     console.log(`${t.name}: ${result === t.expected ? '✅' : '❌'} (Result: ${result}, Expected: ${t.expected})`);
