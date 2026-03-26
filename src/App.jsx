@@ -53,8 +53,12 @@ function App() {
             {/* Global Notification Toast */}
             {notification && (
                 <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] w-[90%] max-w-xs transition-all animate-in fade-in slide-in-from-top-4 duration-300">
-                    <div className="bg-volt/90 text-black px-4 py-3 rounded-xl shadow-2xl border border-white/20 backdrop-blur-md flex items-center justify-between">
-                        <span className="text-sm font-bold uppercase tracking-widerCondensed">{notification}</span>
+                    <div className={`px-4 py-3 rounded-xl shadow-2xl border border-white/20 backdrop-blur-md flex items-center justify-between ${
+                        notification.type === 'error' ? 'bg-red-500/90 text-white' : 'bg-volt/90 text-black'
+                    }`}>
+                        <span className="text-sm font-bold uppercase tracking-widerCondensed">
+                            {typeof notification === 'object' ? notification.message : notification}
+                        </span>
                     </div>
                 </div>
             )}

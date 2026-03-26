@@ -326,23 +326,6 @@ export default function AdminDashboard() {
                 )}
             </div>
 
-            {/* Notification Toast */}
-            <AnimatePresence>
-                {notification && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className={`fixed bottom-10 left-6 right-6 z-[200] p-6 rounded-[2.5rem] border shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex items-center justify-between ${
-                            notification.type === 'success' ? 'bg-volt/10 border-volt/20 text-volt' : 'bg-red-500/10 border-red-500/20 text-red-500'
-                        }`}
-                    >
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{notification.message}</span>
-                        <button onClick={() => setNotification(null)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all">✕</button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
             {/* Modals Layer */}
             <AnimatePresence>
                 {editingTeam && (

@@ -14,6 +14,7 @@ export const SCOUT_WEIGHTS = {
     GOL: 5.0,
     ASSISTENCIA: 3.0,
     FINALIZACAO_DEFENDIDA: 1.2,
+    DESARME: 1.5,
     GOLEIRO_LINHA_GOL: 8.0,
     CARTAO_AMARELO: -2.0,
     CARTAO_VERMELHO: -5.0,
@@ -41,6 +42,7 @@ export function calculateScore(stats, pos, isCaptain = false) {
     score += (stats.gols || 0) * SCOUT_WEIGHTS.GOL;
     score += (stats.assistencias || 0) * SCOUT_WEIGHTS.ASSISTENCIA;
     score += (stats.finalizacoes_defendidas || 0) * SCOUT_WEIGHTS.FINALIZACAO_DEFENDIDA;
+    score += (stats.desarmes || 0) * SCOUT_WEIGHTS.DESARME;
     score += (stats.gols_goleiro_linha || 0) * SCOUT_WEIGHTS.GOLEIRO_LINHA_GOL;
 
     // Scouts Negativos
